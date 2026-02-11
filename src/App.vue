@@ -2,10 +2,9 @@
 import { ref } from 'vue'
 import { parseJsonSafe, formatJson } from './utils/jsonParse.js'
 import * as jsondiffpatch from 'jsondiffpatch'
-import * as htmlFormatter from 'jsondiffpatch/formatters/html'
-import 'jsondiffpatch/formatters/styles/html.css'
+import { formatSideBySide } from './utils/sideBySideDiff.js'
 
-const mode = ref('format') // 'format' | 'diff'
+const mode = ref('diff') // 'format' | 'diff'
 const rawInput = ref('')
 const formatResult = ref('')
 const formatError = ref('')
@@ -13,7 +12,9 @@ const formatUsedUnescape = ref(false)
 
 const leftInput = ref('')
 const rightInput = ref('')
-const diffHtml = ref('')
+const diffLeftHtml = ref('')
+const diffRightHtml = ref('')
+const diffNoChange = ref(false)
 const diffError = ref('')
 
 const diffpatcher = jsondiffpatch.create({
@@ -50,7 +51,9 @@ function isDirectParse(str) {
 
 function doDiff() {
   diffError.value = ''
-  diffHtml.value = ''
+  diffLeftHtml.value = ''
+  diffRightHtml.value = ''
+  diffNoChange.value = false
   const leftResult = parseJsonSafe(leftInput.value)
   const rightResult = parseJsonSafe(rightInput.value)
   if (!leftResult.ok) {
@@ -63,13 +66,15 @@ function doDiff() {
   }
   const delta = diffpatcher.diff(leftResult.value, rightResult.value)
   if (delta === undefined) {
-    diffHtml.value = '<div class="jdp-no-diff">两侧 JSON 相同，无差异。</div>'
+    diffNoChange.value = true
     return
   }
   try {
-    diffHtml.value = htmlFormatter.format(delta, leftResult.value, rightResult.value)
+    const { left, right } = formatSideBySide(leftResult.value, rightResult.value, delta)
+    diffLeftHtml.value = left
+    diffRightHtml.value = right
   } catch (e) {
-    diffHtml.value = htmlFormatter.format(delta, leftResult.value)
+    diffError.value = `Diff 渲染失败：${e.message}`
   }
 }
 
@@ -127,18 +132,18 @@ function doDiff() {
       <section v-show="mode === 'diff'" class="panel diff-panel">
         <div class="two-cols">
           <div class="field">
-            <label>左侧 JSON</label>
+            <label>左侧 JSON（可含 <code>\"</code>、<code>\\n</code>、<code>\\uXXXX</code> 等转义，将自动识别并解析）</label>
             <textarea
               v-model="leftInput"
-              placeholder="粘贴第一段 JSON…"
+              placeholder='例如：{"a":1} 或带 \" 的转义字符串…'
               rows="10"
             />
           </div>
           <div class="field">
-            <label>右侧 JSON</label>
+            <label>右侧 JSON（可含转义字符串，将自动识别并解析）</label>
             <textarea
               v-model="rightInput"
-              placeholder="粘贴第二段 JSON…"
+              placeholder='例如：{"a":2} 或带 \" 的转义字符串…'
               rows="10"
             />
           </div>
@@ -147,11 +152,22 @@ function doDiff() {
         <div v-if="diffError" class="error">
           {{ diffError }}
         </div>
+        <div v-if="diffNoChange" class="diff-output diff-no-change">
+          两侧 JSON 相同，无差异。
+        </div>
         <div
-          v-if="diffHtml"
-          class="diff-output jdp-wrapper"
-          v-html="diffHtml"
-        />
+          v-else-if="diffLeftHtml || diffRightHtml"
+          class="diff-output diff-side-by-side"
+        >
+          <div class="diff-col">
+            <div class="diff-col-label">左侧（旧）</div>
+            <pre class="diff-pre" v-html="diffLeftHtml"></pre>
+          </div>
+          <div class="diff-col">
+            <div class="diff-col-label">右侧（新）</div>
+            <pre class="diff-pre" v-html="diffRightHtml"></pre>
+          </div>
+        </div>
       </section>
     </main>
   </div>
@@ -330,7 +346,6 @@ textarea:focus {
 
 .diff-output {
   margin-top: 1rem;
-  padding: 1rem;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -338,34 +353,78 @@ textarea:focus {
   min-height: 120px;
 }
 
-.diff-output :deep(.jdp-no-diff) {
+.diff-no-change {
+  padding: 1rem;
   color: var(--text-muted);
   font-style: italic;
 }
 
-/* 深色主题下 Diff 高亮可读 */
-.diff-output :deep(.jsondiffpatch-delta) {
-  color: var(--text);
+/* 左右并排，参考 https://jsondiff.com/ */
+.diff-side-by-side {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.diff-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-right: 1px solid var(--border);
+}
+
+.diff-col:last-child {
+  border-right: none;
+}
+
+.diff-col-label {
+  padding: 0.5rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--surface-hover);
+  border-bottom: 1px solid var(--border);
+}
+
+.diff-pre {
+  margin: 0;
+  padding: 1rem;
   font-family: var(--font-mono);
   font-size: 0.8rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow: auto;
+  flex: 1;
+  min-height: 200px;
 }
-.diff-output :deep(.jsondiffpatch-added .jsondiffpatch-property-name),
-.diff-output :deep(.jsondiffpatch-added .jsondiffpatch-value pre),
-.diff-output :deep(.jsondiffpatch-modified .jsondiffpatch-right-value pre),
-.diff-output :deep(.jsondiffpatch-textdiff-added) {
-  background: rgba(34, 197, 94, 0.35);
-  color: #86efac;
-}
-.diff-output :deep(.jsondiffpatch-deleted .jsondiffpatch-property-name),
-.diff-output :deep(.jsondiffpatch-deleted pre),
-.diff-output :deep(.jsondiffpatch-modified .jsondiffpatch-left-value pre),
-.diff-output :deep(.jsondiffpatch-textdiff-deleted) {
+
+/* 有差异的部分高亮 */
+.diff-pre :deep(.diff-removed) {
   background: rgba(239, 68, 68, 0.35);
   color: #fca5a5;
   text-decoration: line-through;
 }
-.diff-output :deep(.jsondiffpatch-unchanged),
-.diff-output :deep(.jsondiffpatch-movedestination) {
-  color: var(--text-muted);
+
+.diff-pre :deep(.diff-added) {
+  background: rgba(34, 197, 94, 0.35);
+  color: #86efac;
+}
+
+@media (max-width: 768px) {
+  .diff-side-by-side {
+    grid-template-columns: 1fr;
+  }
+
+  .diff-col {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .diff-col:last-child {
+    border-bottom: none;
+  }
 }
 </style>

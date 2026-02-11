@@ -1,12 +1,13 @@
 :root {
-  --bg: #0f0f12;
-  --surface: #18181c;
-  --surface-hover: #1e1e24;
-  --border: #2a2a32;
-  --text: #e4e4e7;
-  --text-muted: #71717a;
-  --accent: #a78bfa;
-  --accent-dim: #7c3aed;
+  /* 白绿色背景主题 */
+  --bg: #f0faf4;
+  --surface: #ffffff;
+  --surface-hover: #ecfdf5;
+  --border: #a7f3d0;
+  --text: #14532d;
+  --text-muted: #166534;
+  --accent: #059669;
+  --accent-dim: #10b981;
   --add: #22c55e;
   --remove: #ef4444;
   --change: #eab308;
