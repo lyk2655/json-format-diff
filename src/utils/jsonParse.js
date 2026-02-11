@@ -12,22 +12,32 @@ export function parseJsonSafe(input) {
     return { ok: false, value: null, error: '输入为空' }
   }
 
+  // 1. 直接解析
   try {
     const value = JSON.parse(raw)
     return { ok: true, value, error: null }
-  } catch (_) {
-    // 可能是双重编码：字符串里写的是 \" 而不是 "
-    if (raw.includes('\\"') || raw.includes('\\\\') || /\\[nrtuU]/.test(raw)) {
-      try {
-        const unescaped = unescapeJsonString(raw)
-        const value = JSON.parse(unescaped)
-        return { ok: true, value, error: null }
-      } catch (e) {
-        return { ok: false, value: null, error: e.message || '解转义后仍无法解析为 JSON' }
-      }
-    }
-    return { ok: false, value: null, error: _.message || '无效的 JSON' }
+  } catch (_) {}
+
+  // 2. 缺少外层 {} 的键值对（如 case1.txt："ackReqTmp":"{\"reqid\":...}"）补上大括号再解析
+  if (!raw.startsWith('{') && !raw.startsWith('[') && raw.startsWith('"') && /^"[^"]*":/.test(raw)) {
+    try {
+      const value = JSON.parse('{' + raw + '}')
+      return { ok: true, value, error: null }
+    } catch (_) {}
   }
+
+  // 3. 可能是双重编码：字符串里写的是 \" 而不是 "
+  if (raw.includes('\\"') || raw.includes('\\\\') || /\\[nrtuU]/.test(raw)) {
+    try {
+      const unescaped = unescapeJsonString(raw)
+      const value = JSON.parse(unescaped)
+      return { ok: true, value, error: null }
+    } catch (e) {
+      return { ok: false, value: null, error: e.message || '解转义后仍无法解析为 JSON' }
+    }
+  }
+
+  return { ok: false, value: null, error: '无效的 JSON' }
 }
 
 /**
@@ -95,6 +105,30 @@ function unescapeJsonString(str) {
     }
   }
   return out
+}
+
+/**
+ * 若解析结果为「外层仅有一个字段、且该字段值为可解析的 JSON 字符串」（如 ackReqTmp、data 等），
+ * 则自动解析该字符串（支持转义）并返回内层 JSON，用于 diff/格式化。
+ */
+export function parseJsonSafeExtract(input) {
+  const result = parseJsonSafe(input)
+  if (!result.ok || result.value == null) return result
+  const value = result.value
+  if (typeof value !== 'object' || Array.isArray(value)) return result
+  const keys = Object.keys(value)
+  for (const key of keys) {
+    const v = value[key]
+    if (typeof v !== 'string') continue
+    const trimmed = v.trim()
+    if ((trimmed.startsWith('{') && trimmed.includes('}')) || (trimmed.startsWith('[') && trimmed.includes(']'))) {
+      const inner = parseJsonSafe(v)
+      if (inner.ok && inner.value != null) {
+        return { ok: true, value: inner.value, error: null }
+      }
+    }
+  }
+  return result
 }
 
 /**

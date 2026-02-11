@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { parseJsonSafe, formatJson } from './utils/jsonParse.js'
+import { parseJsonSafe, parseJsonSafeExtract, formatJson } from './utils/jsonParse.js'
 import * as jsondiffpatch from 'jsondiffpatch'
 import { formatSideBySide } from './utils/sideBySideDiff.js'
 
@@ -29,7 +29,7 @@ function doFormat() {
   formatUsedUnescape.value = false
   if (formatTimer) clearTimeout(formatTimer)
   formatTimer = setTimeout(() => {
-    const { ok, value, error } = parseJsonSafe(rawInput.value)
+    const { ok, value, error } = parseJsonSafeExtract(rawInput.value)
     if (!ok) {
       formatError.value = error
       return
@@ -54,8 +54,8 @@ function doDiff() {
   diffLeftHtml.value = ''
   diffRightHtml.value = ''
   diffNoChange.value = false
-  const leftResult = parseJsonSafe(leftInput.value)
-  const rightResult = parseJsonSafe(rightInput.value)
+  const leftResult = parseJsonSafeExtract(leftInput.value)
+  const rightResult = parseJsonSafeExtract(rightInput.value)
   if (!leftResult.ok) {
     diffError.value = `左侧 JSON 解析失败：${leftResult.error}`
     return
@@ -84,7 +84,7 @@ function doDiff() {
   <div class="app">
     <header class="header">
       <h1>JSON 格式化与 Diff</h1>
-      <p class="subtitle">支持带转义字符的字符串自动识别并解析</p>
+      <p class="subtitle">支持转义字符串自动识别；支持外层包裹（如 <code>ackReqTmp</code>）自动提取内层 JSON</p>
       <div class="tabs">
         <button
           :class="{ active: mode === 'format' }"
