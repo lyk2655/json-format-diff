@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
 import { parseJsonSafe, parseJsonSafeExtract, formatJson } from './utils/jsonParse.js'
 import * as jsondiffpatch from 'jsondiffpatch'
 import { formatSideBySide } from './utils/sideBySideDiff.js'
@@ -16,6 +16,7 @@ const diffLeftHtml = ref('')
 const diffRightHtml = ref('')
 const diffNoChange = ref(false)
 const diffError = ref('')
+const diffOutputRef = ref(null)
 
 const diffpatcher = jsondiffpatch.create({
   objectHash: (obj) => obj?.id ?? obj?.dish_id ?? obj?.store_id ?? obj?.name ?? JSON.stringify(obj),
@@ -73,8 +74,16 @@ function doDiff() {
     const { left, right } = formatSideBySide(leftResult.value, rightResult.value, delta)
     diffLeftHtml.value = left
     diffRightHtml.value = right
+    nextTick(() => scrollToFirstDiff())
   } catch (e) {
     diffError.value = `Diff 渲染失败：${e.message}`
+  }
+}
+
+function scrollToFirstDiff() {
+  const el = diffOutputRef.value?.querySelector('.diff-removed, .diff-added')
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 }
 
@@ -157,6 +166,7 @@ function doDiff() {
         </div>
         <div
           v-else-if="diffLeftHtml || diffRightHtml"
+          ref="diffOutputRef"
           class="diff-output diff-side-by-side"
         >
           <div class="diff-col">
