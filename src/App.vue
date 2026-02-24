@@ -15,6 +15,7 @@ const rightInput = ref('')
 const diffLeftHtml = ref('')
 const diffRightHtml = ref('')
 const diffNoChange = ref(false)
+const diffFormattedResult = ref('')
 const diffError = ref('')
 const diffOutputRef = ref(null)
 
@@ -55,6 +56,7 @@ function doDiff() {
   diffLeftHtml.value = ''
   diffRightHtml.value = ''
   diffNoChange.value = false
+  diffFormattedResult.value = ''
   const leftResult = parseJsonSafeExtract(leftInput.value)
   const rightResult = parseJsonSafeExtract(rightInput.value)
   if (!leftResult.ok) {
@@ -68,6 +70,7 @@ function doDiff() {
   const delta = diffpatcher.diff(leftResult.value, rightResult.value)
   if (delta === undefined) {
     diffNoChange.value = true
+    diffFormattedResult.value = formatJson(leftResult.value)
     return
   }
   try {
@@ -161,8 +164,15 @@ function scrollToFirstDiff() {
         <div v-if="diffError" class="error">
           {{ diffError }}
         </div>
-        <div v-if="diffNoChange" class="diff-output diff-no-change">
-          两侧 JSON 相同，无差异。
+        <div v-if="diffNoChange" class="diff-output diff-no-change-wrap">
+          <p class="diff-no-change-msg">两侧 JSON 相同，无差异。</p>
+          <div class="field result">
+            <label>格式化结果</label>
+            <pre class="formatted">{{ diffFormattedResult }}</pre>
+            <button class="btn-copy" @click="navigator.clipboard?.writeText(diffFormattedResult)">
+              复制结果
+            </button>
+          </div>
         </div>
         <div
           v-else-if="diffLeftHtml || diffRightHtml"
@@ -363,8 +373,12 @@ textarea:focus {
   min-height: 120px;
 }
 
-.diff-no-change {
-  padding: 1rem;
+.diff-no-change-wrap {
+  padding: 0;
+}
+
+.diff-no-change-msg {
+  margin: 0 0 1rem;
   color: var(--text-muted);
   font-style: italic;
 }
