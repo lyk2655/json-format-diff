@@ -203,13 +203,23 @@ function formatSide(leftVal, rightVal, delta, side, indent = 0) {
 }
 
 /**
+ * 行比较时忽略末尾逗号，使 "10355671," 与 "10355671" 视为相同
+ */
+function normalizeLineForComparison(line) {
+  return line.replace(/,\s*$/, '').trim()
+}
+
+/**
  * 使用 diff 库（Myers 算法）将左右两边的行对齐，比 LCS 更快
+ * 比较时忽略行尾逗号，避免因 JSON 格式差异导致误判
  * @param {string} leftText
  * @param {string} rightText
  * @returns {{ left: string, right: string }[]}
  */
 function alignLines(leftText, rightText) {
-  const changes = diffLines(leftText, rightText)
+  const changes = diffLines(leftText, rightText, {
+    comparator: (a, b) => normalizeLineForComparison(a) === normalizeLineForComparison(b),
+  })
   const rows = []
   for (const chunk of changes) {
     const lines = chunk.value.endsWith('\n')

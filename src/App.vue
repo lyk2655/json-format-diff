@@ -98,7 +98,8 @@ function scrollToFirstDiff() {
 }
 
 function hasDiffInRow(row) {
-  return row.left !== row.right
+  const norm = (s) => (s || '').replace(/,\s*$/, '').trim()
+  return norm(row.left) !== norm(row.right)
 }
 
 </script>
