@@ -21,15 +21,23 @@ function getDeltaType(delta) {
     if (delta.length === 1) return 'added'
     if (delta.length === 2) return 'modified'
     if (delta.length === 3 && delta[2] === 0) return 'deleted'
+    if (delta.length === 3 && delta[2] === 2) return 'textdiff'
     if (delta.length === 3 && delta[2] === 3) return 'moved'
   }
   if (typeof delta === 'object' && delta !== null) return 'node'
   return 'unchanged'
 }
 
-function arrayKeyOrder(delta) {
+function arrayKeyOrder(delta, leftObj) {
   if (!delta || delta._t !== 'a') return []
   const keys = Object.keys(delta).filter((k) => k !== '_t')
+  if (leftObj) {
+    for (let i = 0; i < leftObj.length; i++) {
+      if (delta[i] === undefined && delta['_' + i] === undefined) {
+        keys.push(String(i))
+      }
+    }
+  }
   const num = (k) => (k.startsWith('_') ? parseInt(k.slice(1), 10) : parseInt(k, 10) + 0.1)
   keys.sort((a, b) => num(a) - num(b))
   return keys
@@ -60,6 +68,26 @@ function formatValue(val, indent) {
 
 function wrapClass(html, className) {
   return `<span class="${className}">${html}</span>`
+}
+
+function getInlineDiffStrings(leftStr, rightStr) {
+  const L = String(leftStr)
+  const R = String(rightStr)
+  if (L.length === 0 && R.length === 0) return { leftHtml: '', rightHtml: '' }
+  if (L.length === 0) return { leftHtml: '', rightHtml: wrapClass(escapeHtml(R), 'diff-added') }
+  if (R.length === 0) return { leftHtml: wrapClass(escapeHtml(L), 'diff-removed'), rightHtml: '' }
+  let i = 0
+  while (i < L.length && i < R.length && L[i] === R[i]) i++
+  const prefixLen = i
+  let j = 0
+  while (j < L.length - prefixLen && j < R.length - prefixLen && L[L.length - 1 - j] === R[R.length - 1 - j]) j++
+  const leftMiddle = L.slice(prefixLen, L.length - j)
+  const rightMiddle = R.slice(prefixLen, R.length - j)
+  const prefix = escapeHtml(L.slice(0, prefixLen))
+  const suffix = escapeHtml(L.slice(L.length - j))
+  const leftHtml = prefix + (leftMiddle ? wrapClass(escapeHtml(leftMiddle), 'diff-removed') : '') + suffix
+  const rightHtml = prefix + (rightMiddle ? wrapClass(escapeHtml(rightMiddle), 'diff-added') : '') + suffix
+  return { leftHtml, rightHtml }
 }
 
 /**
@@ -98,6 +126,13 @@ function formatSide(leftVal, rightVal, delta, side, indent = 0) {
     return wrapClass(html, side === 'left' ? 'diff-removed' : 'diff-added')
   }
 
+  if (type === 'textdiff') {
+    const leftStr = formatValue(leftVal, indent)
+    const rightStr = formatValue(rightVal, indent)
+    const { leftHtml, rightHtml } = getInlineDiffStrings(leftStr, rightStr)
+    return side === 'left' ? leftHtml : rightHtml
+  }
+
   if (type === 'moved') {
     // 简化为左侧显示旧值高亮，右侧显示新位置
     if (side === 'left') {
@@ -114,7 +149,7 @@ function formatSide(leftVal, rightVal, delta, side, indent = 0) {
     const rightObj = Array.isArray(rightVal) ? rightVal : rightVal
 
     if (isArray) {
-      const keys = arrayKeyOrder(delta)
+      const keys = arrayKeyOrder(delta, leftObj)
       const parts = []
       for (const key of keys) {
         const idx = key.startsWith('_') ? key.slice(1) : key
