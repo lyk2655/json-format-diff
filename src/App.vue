@@ -426,15 +426,25 @@ textarea:focus {
 }
 
 /* 有差异的部分高亮 */
+/* 有差异的部分：实色背景 + 边框，确保易读 */
 .diff-pre :deep(.diff-removed) {
-  background: rgba(239, 68, 68, 0.35);
-  color: #fca5a5;
-  text-decoration: line-through;
+  background: #fecaca;
+  color: #991b1b;
+  padding: 1px 3px;
+  border-radius: 3px;
+  border: 1px solid #dc2626;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 
 .diff-pre :deep(.diff-added) {
-  background: rgba(34, 197, 94, 0.35);
-  color: #86efac;
+  background: #bbf7d0;
+  color: #166534;
+  padding: 1px 3px;
+  border-radius: 3px;
+  border: 1px solid #22c55e;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 
 @media (max-width: 768px) {
