@@ -12,9 +12,9 @@ const formatUsedUnescape = ref(false)
 
 const leftInput = ref('')
 const rightInput = ref('')
-const diffLeftHtml = ref('')
-const diffRightHtml = ref('')
+const diffRows = ref([])
 const diffNoChange = ref(false)
+const diffLoading = ref(false)
 const diffFormattedResult = ref('')
 const diffError = ref('')
 const diffOutputRef = ref(null)
@@ -53,34 +53,41 @@ function isDirectParse(str) {
 
 function doDiff() {
   diffError.value = ''
-  diffLeftHtml.value = ''
-  diffRightHtml.value = ''
+  diffRows.value = []
   diffNoChange.value = false
   diffFormattedResult.value = ''
+  diffLoading.value = true
   const leftResult = parseJsonSafeExtract(leftInput.value)
   const rightResult = parseJsonSafeExtract(rightInput.value)
   if (!leftResult.ok) {
     diffError.value = `左侧 JSON 解析失败：${leftResult.error}`
+    diffLoading.value = false
     return
   }
   if (!rightResult.ok) {
     diffError.value = `右侧 JSON 解析失败：${rightResult.error}`
+    diffLoading.value = false
     return
   }
   const delta = diffpatcher.diff(leftResult.value, rightResult.value)
   if (delta === undefined) {
     diffNoChange.value = true
     diffFormattedResult.value = formatJson(leftResult.value)
+    diffLoading.value = false
     return
   }
-  try {
-    const { left, right } = formatSideBySide(leftResult.value, rightResult.value, delta)
-    diffLeftHtml.value = left
-    diffRightHtml.value = right
-    nextTick(() => scrollToFirstDiff())
-  } catch (e) {
-    diffError.value = `Diff 渲染失败：${e.message}`
-  }
+  // 异步执行 diff 渲染，避免阻塞 UI
+  setTimeout(() => {
+    try {
+      const { rows } = formatSideBySide(leftResult.value, rightResult.value, delta)
+      diffRows.value = rows
+      diffLoading.value = false
+      nextTick(() => scrollToFirstDiff())
+    } catch (e) {
+      diffError.value = `Diff 渲染失败：${e.message}`
+      diffLoading.value = false
+    }
+  })
 }
 
 function scrollToFirstDiff() {
@@ -88,6 +95,10 @@ function scrollToFirstDiff() {
   if (el) {
     el.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
+}
+
+function hasDiffInRow(row) {
+  return row.left !== row.right
 }
 
 </script>
@@ -160,7 +171,9 @@ function scrollToFirstDiff() {
             />
           </div>
         </div>
-        <button class="btn-diff" @click="doDiff">生成 Diff</button>
+        <button class="btn-diff" @click="doDiff" :disabled="diffLoading">
+          {{ diffLoading ? '对比中…' : '生成 Diff' }}
+        </button>
         <div v-if="diffError" class="error">
           {{ diffError }}
         </div>
@@ -175,18 +188,26 @@ function scrollToFirstDiff() {
           </div>
         </div>
         <div
-          v-else-if="diffLeftHtml || diffRightHtml"
+          v-else-if="diffRows.length"
           ref="diffOutputRef"
           class="diff-output diff-side-by-side"
         >
-          <div class="diff-col">
-            <div class="diff-col-label">左侧（旧）</div>
-            <pre class="diff-pre" v-html="diffLeftHtml"></pre>
-          </div>
-          <div class="diff-col">
-            <div class="diff-col-label">右侧（新）</div>
-            <pre class="diff-pre" v-html="diffRightHtml"></pre>
-          </div>
+          <div class="diff-col-label">左侧（旧）</div>
+          <div class="diff-col-label">右侧（新）</div>
+          <template v-for="(row, i) in diffRows" :key="i">
+            <div
+              class="diff-cell diff-left"
+              :class="{ 'diff-row-changed': hasDiffInRow(row) }"
+            >
+              <pre class="diff-line" v-html="row.left || '&nbsp;'"></pre>
+            </div>
+            <div
+              class="diff-cell diff-right"
+              :class="{ 'diff-row-changed': hasDiffInRow(row) }"
+            >
+              <pre class="diff-line" v-html="row.right || '&nbsp;'"></pre>
+            </div>
+          </template>
         </div>
       </section>
     </main>
@@ -360,8 +381,13 @@ textarea:focus {
   margin-bottom: 1rem;
 }
 
-.btn-diff:hover {
+.btn-diff:hover:not(:disabled) {
   background: var(--accent);
+}
+
+.btn-diff:disabled {
+  opacity: 0.8;
+  cursor: not-allowed;
 }
 
 .diff-output {
@@ -383,24 +409,14 @@ textarea:focus {
   font-style: italic;
 }
 
-/* 左右并排，参考 https://jsondiff.com/ */
+/* 左右并排，行对齐，参考 https://jsondiff.com/ */
 .diff-side-by-side {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0;
   border-radius: var(--radius);
-  overflow: hidden;
-}
-
-.diff-col {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  border-right: 1px solid var(--border);
-}
-
-.diff-col:last-child {
-  border-right: none;
+  overflow: auto;
+  min-height: 200px;
 }
 
 .diff-col-label {
@@ -410,24 +426,45 @@ textarea:focus {
   color: var(--text-muted);
   background: var(--surface-hover);
   border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
-.diff-pre {
+.diff-col-label:first-child {
+  border-right: 1px solid var(--border);
+}
+
+.diff-cell {
+  padding: 0 1rem;
+  min-width: 0;
+}
+
+.diff-cell.diff-left {
+  border-right: 1px solid var(--border);
+}
+
+.diff-cell.diff-row-changed.diff-left {
+  background: rgba(254, 202, 202, 0.15);
+}
+
+.diff-cell.diff-row-changed.diff-right {
+  background: rgba(187, 247, 208, 0.15);
+}
+
+.diff-line {
   margin: 0;
-  padding: 1rem;
+  padding: 0.15rem 0;
   font-family: var(--font-mono);
   font-size: 0.8rem;
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-all;
-  overflow: auto;
-  flex: 1;
-  min-height: 200px;
 }
 
 /* 有差异的部分高亮 */
 /* 有差异的部分：实色背景 + 边框，确保易读 */
-.diff-pre :deep(.diff-removed) {
+.diff-line :deep(.diff-removed) {
   background: #fecaca;
   color: #991b1b;
   padding: 1px 3px;
@@ -437,7 +474,7 @@ textarea:focus {
   -webkit-box-decoration-break: clone;
 }
 
-.diff-pre :deep(.diff-added) {
+.diff-line :deep(.diff-added) {
   background: #bbf7d0;
   color: #166534;
   padding: 1px 3px;
@@ -452,13 +489,12 @@ textarea:focus {
     grid-template-columns: 1fr;
   }
 
-  .diff-col {
+  .diff-col-label:first-child {
     border-right: none;
-    border-bottom: 1px solid var(--border);
   }
 
-  .diff-col:last-child {
-    border-bottom: none;
+  .diff-cell.diff-left {
+    border-right: none;
   }
 }
 </style>

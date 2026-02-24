@@ -3,6 +3,8 @@
  * 参考 https://jsondiff.com/ 的展示效果
  */
 
+import { diffLines } from 'diff'
+
 const INDENT = 2
 
 function escapeHtml(str) {
@@ -201,14 +203,45 @@ function formatSide(leftVal, rightVal, delta, side, indent = 0) {
 }
 
 /**
- * 生成左右并排的 diff HTML
+ * 使用 diff 库（Myers 算法）将左右两边的行对齐，比 LCS 更快
+ * @param {string} leftText
+ * @param {string} rightText
+ * @returns {{ left: string, right: string }[]}
+ */
+function alignLines(leftText, rightText) {
+  const changes = diffLines(leftText, rightText)
+  const rows = []
+  for (const chunk of changes) {
+    const lines = chunk.value.endsWith('\n')
+      ? chunk.value.slice(0, -1).split('\n')
+      : chunk.value ? chunk.value.split('\n') : []
+    if (chunk.added) {
+      for (const line of lines) {
+        rows.push({ left: '', right: line })
+      }
+    } else if (chunk.removed) {
+      for (const line of lines) {
+        rows.push({ left: line, right: '' })
+      }
+    } else {
+      for (const line of lines) {
+        rows.push({ left: line, right: line })
+      }
+    }
+  }
+  return rows
+}
+
+/**
+ * 生成左右并排的 diff HTML（行对齐）
  * @param {object} left - 左侧（旧）对象
  * @param {object} right - 右侧（新）对象
  * @param {object} delta - jsondiffpatch 的 diff 结果
- * @returns {{ left: string, right: string }}
+ * @returns {{ rows: { left: string, right: string }[] }}
  */
 export function formatSideBySide(left, right, delta) {
   const leftHtml = formatSide(left, right, delta, 'left', 0)
   const rightHtml = formatSide(left, right, delta, 'right', 0)
-  return { left: leftHtml, right: rightHtml }
+  const rows = alignLines(leftHtml, rightHtml)
+  return { rows }
 }
