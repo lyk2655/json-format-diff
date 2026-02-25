@@ -102,6 +102,56 @@ function hasDiffInRow(row) {
   return norm(row.left) !== norm(row.right)
 }
 
+function scrollToTop() {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function scrollToBottom() {
+  window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' })
+}
+
+function getDiffElements() {
+  const container = diffOutputRef.value
+  if (!container) return []
+  return Array.from(container.querySelectorAll('.diff-cell.diff-left.diff-row-changed'))
+}
+
+function scrollToPrevDiff() {
+  const elements = getDiffElements()
+  if (elements.length === 0) return
+  const viewportCenter = window.innerHeight / 2
+  const scrollTop = window.scrollY
+  let target = null
+  for (let i = elements.length - 1; i >= 0; i--) {
+    const rect = elements[i].getBoundingClientRect()
+    const elTop = rect.top + scrollTop
+    if (elTop < scrollTop + viewportCenter - 50) {
+      target = elements[i]
+      break
+    }
+  }
+  if (!target && elements.length > 0) target = elements[0]
+  target?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
+
+function scrollToNextDiff() {
+  const elements = getDiffElements()
+  if (elements.length === 0) return
+  const viewportCenter = window.innerHeight / 2
+  const scrollTop = window.scrollY
+  let target = null
+  for (let i = 0; i < elements.length; i++) {
+    const rect = elements[i].getBoundingClientRect()
+    const elTop = rect.top + scrollTop
+    if (elTop > scrollTop + viewportCenter + 50) {
+      target = elements[i]
+      break
+    }
+  }
+  if (!target && elements.length > 0) target = elements[elements.length - 1]
+  target?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
+
 </script>
 
 <template>
@@ -212,6 +262,30 @@ function hasDiffInRow(row) {
         </div>
       </section>
     </main>
+
+    <!-- 快捷导航图标组 -->
+    <div class="nav-icons">
+      <button type="button" title="上一个有 diff 的" @click="scrollToPrevDiff" aria-label="上一个有 diff 的">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 15l-6-6-6 6"/>
+        </svg>
+      </button>
+      <button type="button" title="下一个有 diff 的" @click="scrollToNextDiff" aria-label="下一个有 diff 的">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 9l6 6 6-6"/>
+        </svg>
+      </button>
+      <button type="button" title="返回顶部" @click="scrollToTop" aria-label="返回顶部">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 19V5M5 12l7-7 7 7"/>
+        </svg>
+      </button>
+      <button type="button" title="跳转到底部" @click="scrollToBottom" aria-label="跳转到底部">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 5v14M5 12l7 7 7-7"/>
+        </svg>
+      </button>
+    </div>
   </div>
 </template>
 
@@ -496,6 +570,51 @@ textarea:focus {
 
   .diff-cell.diff-left {
     border-right: none;
+  }
+}
+
+/* 快捷导航图标组 */
+.nav-icons {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 100;
+}
+
+.nav-icons button {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  color: var(--accent);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  transition: background 0.2s, color 0.2s, transform 0.2s;
+}
+
+.nav-icons button:hover {
+  background: var(--accent-dim);
+  color: white;
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+@media (max-width: 768px) {
+  .nav-icons {
+    right: 1rem;
+    bottom: 1.5rem;
+  }
+
+  .nav-icons button {
+    width: 36px;
+    height: 36px;
   }
 }
 </style>
