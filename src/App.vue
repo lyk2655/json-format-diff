@@ -219,10 +219,15 @@ function scrollToNextDiff() {
         </div>
         <div v-if="formatResult" class="field result">
           <label>格式化结果</label>
-          <pre class="formatted">{{ formatResult }}</pre>
-          <button class="btn-copy" @click="copyToClipboard(formatResult)">
-            复制结果
-          </button>
+          <div class="result-box">
+            <button class="btn-copy-inline" type="button" title="复制" @click="copyToClipboard(formatResult)" aria-label="复制">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            </button>
+            <pre class="formatted">{{ formatResult }}</pre>
+          </div>
         </div>
       </section>
 
@@ -256,10 +261,15 @@ function scrollToNextDiff() {
           <p class="diff-no-change-msg">两侧 JSON 相同，无差异。</p>
           <div class="field result">
             <label>格式化结果</label>
-            <pre class="formatted">{{ diffFormattedResult }}</pre>
-            <button class="btn-copy" @click="copyToClipboard(diffFormattedResult)">
-              复制结果
-            </button>
+            <div class="result-box">
+              <button class="btn-copy-inline" type="button" title="复制" @click="copyToClipboard(diffFormattedResult)" aria-label="复制">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+              </button>
+              <pre class="formatted">{{ diffFormattedResult }}</pre>
+            </div>
           </div>
         </div>
         <div
@@ -457,9 +467,14 @@ textarea::placeholder {
   margin-bottom: 1rem;
 }
 
+/* 结果框：复制按钮在右上角 */
+.result-box {
+  position: relative;
+}
+
 .result .formatted {
   margin: 0;
-  padding: 1.25rem;
+  padding: 1.25rem 3rem 1.25rem 1.25rem;
   background: var(--surface-hover);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -472,18 +487,30 @@ textarea::placeholder {
   word-break: break-all;
 }
 
-.btn-copy {
-  margin-top: 0.75rem;
-  padding: 0.5rem 1rem;
-  background: var(--accent-light);
-  color: var(--accent);
-  font-size: 0.875rem;
+.btn-copy-inline {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  opacity: 0.8;
   transition: all 0.2s ease;
+  z-index: 1;
 }
 
-.btn-copy:hover {
-  background: var(--accent);
-  color: white;
+.btn-copy-inline:hover {
+  opacity: 1;
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-light);
 }
 
 .two-cols {
