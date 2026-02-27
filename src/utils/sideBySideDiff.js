@@ -7,6 +7,10 @@ import { diffLines } from 'diff'
 
 const INDENT = 2
 
+/**
+ * 转义 HTML 特殊字符，用于插入到元素内容中。
+ * 仅转义 & < >，不转义 "（在 HTML 文本内容中 " 无需转义，转义会导致显示为 &quot;）
+ */
 function escapeHtml(str) {
   if (str == null) return ''
   const s = String(str)
@@ -14,7 +18,6 @@ function escapeHtml(str) {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
 }
 
 function getDeltaType(delta) {
