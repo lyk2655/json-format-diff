@@ -218,7 +218,16 @@ function scrollToNextDiff() {
           {{ formatError }}
         </div>
         <div v-if="formatResult" class="field result">
-          <label>格式化结果</label>
+          <div class="result-label-row">
+            <label>格式化结果</label>
+            <button class="btn-copy-label" type="button" title="复制" @click="copyToClipboard(formatResult)" aria-label="复制">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+              复制
+            </button>
+          </div>
           <div class="result-box">
             <button class="btn-copy-inline" type="button" title="复制" @click="copyToClipboard(formatResult)" aria-label="复制">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -260,7 +269,16 @@ function scrollToNextDiff() {
         <div v-if="diffNoChange" class="diff-output diff-no-change-wrap">
           <p class="diff-no-change-msg">两侧 JSON 相同，无差异。</p>
           <div class="field result">
-            <label>格式化结果</label>
+            <div class="result-label-row">
+              <label>格式化结果</label>
+              <button class="btn-copy-label" type="button" title="复制" @click="copyToClipboard(diffFormattedResult)" aria-label="复制">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+                复制
+              </button>
+            </div>
             <div class="result-box">
               <button class="btn-copy-inline" type="button" title="复制" @click="copyToClipboard(diffFormattedResult)" aria-label="复制">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -465,6 +483,37 @@ textarea::placeholder {
   color: #dc2626;
   font-size: 0.9rem;
   margin-bottom: 1rem;
+}
+
+/* 标签行：格式化结果 + 复制按钮 */
+.result-label-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.result-label-row label {
+  margin-bottom: 0;
+}
+
+.btn-copy-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.btn-copy-label:hover {
+  color: var(--accent);
+  background: var(--accent-light);
+  border-color: var(--border);
 }
 
 /* 结果框：复制按钮在右上角 */
