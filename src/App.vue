@@ -102,6 +102,30 @@ function hasDiffInRow(row) {
   return norm(row.left) !== norm(row.right)
 }
 
+function copyToClipboard(text) {
+  if (!text) return
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).catch(() => fallbackCopy(text))
+    return
+  }
+  fallbackCopy(text)
+}
+
+function fallbackCopy(text) {
+  const el = document.createElement('textarea')
+  el.value = text
+  el.style.position = 'fixed'
+  el.style.left = '-9999px'
+  el.style.top = '0'
+  document.body.appendChild(el)
+  el.select()
+  try {
+    document.execCommand('copy')
+  } finally {
+    document.body.removeChild(el)
+  }
+}
+
 function scrollToTop() {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
@@ -196,7 +220,7 @@ function scrollToNextDiff() {
         <div v-if="formatResult" class="field result">
           <label>格式化结果</label>
           <pre class="formatted">{{ formatResult }}</pre>
-          <button class="btn-copy" @click="navigator.clipboard?.writeText(formatResult)">
+          <button class="btn-copy" @click="copyToClipboard(formatResult)">
             复制结果
           </button>
         </div>
@@ -233,7 +257,7 @@ function scrollToNextDiff() {
           <div class="field result">
             <label>格式化结果</label>
             <pre class="formatted">{{ diffFormattedResult }}</pre>
-            <button class="btn-copy" @click="navigator.clipboard?.writeText(diffFormattedResult)">
+            <button class="btn-copy" @click="copyToClipboard(diffFormattedResult)">
               复制结果
             </button>
           </div>

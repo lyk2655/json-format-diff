@@ -132,11 +132,45 @@ export function parseJsonSafeExtract(input) {
 }
 
 /**
- * 格式化 JSON，带缩进
+ * 递归处理对象，去掉 segments 中 token 字段的标点符号
+ * 如 "charlotte," -> "charlotte"，"hello!" -> "hello"
+ */
+function stripSymbolsFromToken(str) {
+  if (typeof str !== 'string') return str
+  return str.replace(/[^\w\s\u4e00-\u9fa5]/g, '').trim()
+}
+
+function processSegmentsTokens(obj) {
+  if (obj == null) return obj
+  if (Array.isArray(obj)) {
+    return obj.map(processSegmentsTokens)
+  }
+  if (typeof obj === 'object') {
+    const result = {}
+    for (const [k, v] of Object.entries(obj)) {
+      if (k === 'segments' && Array.isArray(v)) {
+        result[k] = v.map((item) => {
+          if (item && typeof item === 'object' && typeof item.token === 'string') {
+            return { ...item, token: stripSymbolsFromToken(item.token) }
+          }
+          return processSegmentsTokens(item)
+        })
+      } else {
+        result[k] = processSegmentsTokens(v)
+      }
+    }
+    return result
+  }
+  return obj
+}
+
+/**
+ * 格式化 JSON，带缩进。若含 segments 结构，自动去掉 token 中的标点符号
  */
 export function formatJson(obj, indent = 2) {
   try {
-    return JSON.stringify(obj, null, indent)
+    const processed = processSegmentsTokens(obj)
+    return JSON.stringify(processed, null, indent)
   } catch (_) {
     return String(obj)
   }
