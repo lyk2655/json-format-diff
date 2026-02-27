@@ -181,8 +181,8 @@ function scrollToNextDiff() {
 <template>
   <div class="app">
     <header class="header">
-      <h1>JSON 格式化与 Diff</h1>
-      <p class="subtitle">支持转义字符串自动识别；支持外层包裹（如 <code>ackReqTmp</code>）自动提取内层 JSON</p>
+      <h1>JSON 自动格式化与 Diff</h1>
+      <p class="subtitle">支持自动识别，自动转义，自动格式化 JSON</p>
       <div class="tabs">
         <button
           :class="{ active: mode === 'format' }"
@@ -316,128 +316,156 @@ function scrollToNextDiff() {
 <style scoped>
 .app {
   min-height: 100vh;
-  padding: 1.5rem 2rem 3rem;
-  max-width: 1200px;
+  padding: 2rem 1.5rem 4rem;
+  max-width: 1280px;
   margin: 0 auto;
 }
 
+/* 头部 */
 .header {
-  margin-bottom: 2rem;
+  margin-bottom: 2.5rem;
+  padding: 2rem;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border-light);
 }
 
 .header h1 {
-  font-size: 1.75rem;
-  font-weight: 600;
-  margin: 0 0 0.25rem;
-  letter-spacing: -0.02em;
+  font-size: 1.875rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.03em;
+  color: var(--text);
 }
 
 .subtitle {
   color: var(--text-muted);
-  font-size: 0.95rem;
-  margin: 0 0 1.25rem;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  margin: 0 0 1.5rem;
 }
 
+/* 标签页 */
 .tabs {
-  display: flex;
-  gap: 0.5rem;
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 4px;
+  background: var(--surface-hover);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
 }
 
 .tabs button {
-  padding: 0.5rem 1rem;
-  background: var(--surface);
+  padding: 0.5rem 1.25rem;
+  background: transparent;
   color: var(--text-muted);
-  border: 1px solid var(--border);
   font-size: 0.9rem;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  transition: all 0.2s ease;
+  border-radius: 6px;
 }
 
 .tabs button:hover {
   color: var(--text);
-  background: var(--surface-hover);
+  background: var(--surface);
 }
 
 .tabs button.active {
-  background: var(--accent-dim);
-  color: white;
-  border-color: var(--accent);
+  background: var(--surface);
+  color: var(--accent);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
 }
 
 .main {
-  margin-top: 1rem;
+  margin-top: 0;
 }
 
 .panel {
-  animation: fade 0.2s ease;
+  animation: fade 0.25s ease;
+  padding: 2rem;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border-light);
 }
 
 @keyframes fade {
-  from { opacity: 0.6; }
-  to { opacity: 1; }
+  from { opacity: 0.6; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .field {
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
 }
 
 .field label {
   display: block;
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--text-muted);
-  margin-bottom: 0.35rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.5rem;
 }
 
 .field label code {
   font-family: var(--font-mono);
-  font-size: 0.8em;
-  background: var(--surface);
-  padding: 0.1em 0.35em;
+  font-size: 0.75em;
+  background: var(--accent-light);
+  color: var(--accent);
+  padding: 0.15em 0.4em;
   border-radius: 4px;
 }
 
 textarea {
   width: 100%;
-  padding: 0.75rem 1rem;
-  background: var(--surface);
+  padding: 1rem 1.25rem;
+  background: var(--surface-hover);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   color: var(--text);
   font-size: 0.875rem;
-  line-height: 1.5;
+  line-height: 1.6;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 textarea:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.2);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+textarea::placeholder {
+  color: var(--text-subtle);
 }
 
 .hint {
-  font-size: 0.85rem;
+  font-size: 0.8125rem;
   color: var(--accent);
-  margin: -0.5rem 0 0.5rem;
+  margin: -0.25rem 0 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .error {
-  padding: 0.75rem 1rem;
-  background: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  border-radius: var(--radius);
-  color: #fca5a5;
+  padding: 1rem 1.25rem;
+  background: var(--remove-bg);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: var(--radius-sm);
+  color: #dc2626;
   font-size: 0.9rem;
   margin-bottom: 1rem;
 }
 
 .result .formatted {
   margin: 0;
-  padding: 1rem;
-  background: var(--surface);
+  padding: 1.25rem;
+  background: var(--surface-hover);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   font-family: var(--font-mono);
-  font-size: 0.8rem;
-  line-height: 1.5;
+  font-size: 0.8125rem;
+  line-height: 1.6;
   overflow: auto;
   max-height: 60vh;
   white-space: pre-wrap;
@@ -445,25 +473,24 @@ textarea:focus {
 }
 
 .btn-copy {
-  margin-top: 0.5rem;
-  padding: 0.4rem 0.75rem;
-  background: var(--surface-hover);
-  color: var(--text);
-  border: 1px solid var(--border);
-  font-size: 0.85rem;
+  margin-top: 0.75rem;
+  padding: 0.5rem 1rem;
+  background: var(--accent-light);
+  color: var(--accent);
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
 }
 
 .btn-copy:hover {
-  background: var(--accent-dim);
+  background: var(--accent);
   color: white;
-  border-color: var(--accent);
 }
 
 .two-cols {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
 }
 
 @media (max-width: 768px) {
@@ -473,33 +500,39 @@ textarea:focus {
 }
 
 .btn-diff {
-  padding: 0.6rem 1.25rem;
-  background: var(--accent-dim);
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
   color: white;
-  font-size: 0.95rem;
-  margin-bottom: 1rem;
+  font-size: 0.9375rem;
+  margin-bottom: 1.5rem;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+  transition: all 0.2s ease;
 }
 
 .btn-diff:hover:not(:disabled) {
-  background: var(--accent);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
 }
 
 .btn-diff:disabled {
-  opacity: 0.8;
+  opacity: 0.7;
   cursor: not-allowed;
+  transform: none;
 }
 
 .diff-output {
-  margin-top: 1rem;
-  background: var(--surface);
+  margin-top: 1.5rem;
+  background: var(--surface-hover);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   overflow: auto;
   min-height: 120px;
+  box-shadow: var(--shadow-sm);
 }
 
 .diff-no-change-wrap {
-  padding: 0;
+  padding: 1.5rem;
 }
 
 .diff-no-change-msg {
@@ -508,26 +541,27 @@ textarea:focus {
   font-style: italic;
 }
 
-/* 左右并排，行对齐，参考 https://jsondiff.com/ */
 .diff-side-by-side {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0;
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   overflow: auto;
   min-height: 200px;
 }
 
 .diff-col-label {
-  padding: 0.5rem 1rem;
-  font-size: 0.8rem;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--text-muted);
-  background: var(--surface-hover);
+  background: var(--surface);
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
   z-index: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .diff-col-label:first-child {
@@ -535,7 +569,7 @@ textarea:focus {
 }
 
 .diff-cell {
-  padding: 0 1rem;
+  padding: 0 1.25rem;
   min-width: 0;
 }
 
@@ -544,30 +578,28 @@ textarea:focus {
 }
 
 .diff-cell.diff-row-changed.diff-left {
-  background: rgba(254, 202, 202, 0.15);
+  background: var(--remove-bg);
 }
 
 .diff-cell.diff-row-changed.diff-right {
-  background: rgba(187, 247, 208, 0.15);
+  background: var(--add-bg);
 }
 
 .diff-line {
   margin: 0;
-  padding: 0.15rem 0;
+  padding: 0.2rem 0;
   font-family: var(--font-mono);
-  font-size: 0.8rem;
-  line-height: 1.5;
+  font-size: 0.8125rem;
+  line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-all;
 }
 
-/* 有差异的部分高亮 */
-/* 有差异的部分：实色背景 + 边框，确保易读 */
 .diff-line :deep(.diff-removed) {
   background: #fecaca;
   color: #991b1b;
-  padding: 1px 3px;
-  border-radius: 3px;
+  padding: 2px 4px;
+  border-radius: 4px;
   border: 1px solid #dc2626;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
@@ -576,14 +608,26 @@ textarea:focus {
 .diff-line :deep(.diff-added) {
   background: #bbf7d0;
   color: #166534;
-  padding: 1px 3px;
-  border-radius: 3px;
+  padding: 2px 4px;
+  border-radius: 4px;
   border: 1px solid #22c55e;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
 
 @media (max-width: 768px) {
+  .app {
+    padding: 1rem 1rem 3rem;
+  }
+
+  .header {
+    padding: 1.5rem;
+  }
+
+  .panel {
+    padding: 1.25rem;
+  }
+
   .diff-side-by-side {
     grid-template-columns: 1fr;
   }
@@ -597,7 +641,7 @@ textarea:focus {
   }
 }
 
-/* 快捷导航图标组 */
+/* 快捷导航 */
 .nav-icons {
   position: fixed;
   right: 1.5rem;
@@ -609,8 +653,8 @@ textarea:focus {
 }
 
 .nav-icons button {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   display: flex;
   align-items: center;
@@ -618,16 +662,17 @@ textarea:focus {
   background: var(--surface);
   color: var(--accent);
   border: 1px solid var(--border);
-  border-radius: 50%;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  transition: background 0.2s, color 0.2s, transform 0.2s;
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  transition: all 0.2s ease;
 }
 
 .nav-icons button:hover {
-  background: var(--accent-dim);
+  background: var(--accent);
   color: white;
   border-color: var(--accent);
   transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
 
 @media (max-width: 768px) {
@@ -637,8 +682,9 @@ textarea:focus {
   }
 
   .nav-icons button {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
   }
 }
 </style>
