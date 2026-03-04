@@ -1,13 +1,86 @@
 /**
+ * 去掉 JSON 中的单行注释 (//) 和多行注释 (斜杠星 星斜杠)，不处理字符串内的
+ */
+function stripJsonComments(str) {
+  let out = ''
+  let i = 0
+  let inString = false
+  let escape = false
+  let inSingleLine = false
+  let inMultiLine = false
+
+  while (i < str.length) {
+    if (inSingleLine) {
+      if (str[i] === '\n' || str[i] === '\r') {
+        inSingleLine = false
+        out += str[i]
+      }
+      i++
+      continue
+    }
+    if (inMultiLine) {
+      if (str[i] === '*' && str[i + 1] === '/') {
+        inMultiLine = false
+        i += 2
+      } else {
+        i++
+      }
+      continue
+    }
+    if (escape) {
+      out += str[i]
+      escape = false
+      i++
+      continue
+    }
+    if (inString) {
+      if (str[i] === '\\') {
+        escape = true
+        out += str[i]
+        i++
+        continue
+      }
+      if (str[i] === '"') {
+        inString = false
+      }
+      out += str[i]
+      i++
+      continue
+    }
+    if (str[i] === '"') {
+      inString = true
+      out += str[i]
+      i++
+      continue
+    }
+    if (str[i] === '/' && str[i + 1] === '/') {
+      inSingleLine = true
+      i += 2
+      continue
+    }
+    if (str[i] === '/' && str[i + 1] === '*') {
+      inMultiLine = true
+      i += 2
+      continue
+    }
+    out += str[i]
+    i++
+  }
+  return out
+}
+
+/**
  * 尝试解析可能带转义的 JSON 字符串。
- * 1. 先直接 JSON.parse
- * 2. 若失败且字符串中含 \"，视为“双重编码”：先按 JSON 字符串规则解一层转义，再 parse
+ * 1. 先去掉单行、多行注释
+ * 2. 直接 JSON.parse
+ * 3. 若失败且含反斜杠转义，按双重编码处理
  */
 export function parseJsonSafe(input) {
   if (input == null || typeof input !== 'string') {
     return { ok: false, value: null, error: '输入为空或非字符串' }
   }
-  const raw = input.trim()
+  let raw = input.trim()
+  raw = stripJsonComments(raw).trim()
   if (!raw) {
     return { ok: false, value: null, error: '输入为空' }
   }
