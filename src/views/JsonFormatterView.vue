@@ -7,6 +7,7 @@ const output = ref('')
 const error = ref('')
 const indentSize = ref(2)
 const usedUnescape = ref(false)
+const repairedInfo = ref('')
 
 let timer = null
 
@@ -14,16 +15,18 @@ function format() {
   error.value = ''
   output.value = ''
   usedUnescape.value = false
+  repairedInfo.value = ''
   if (!input.value.trim()) return
   if (timer) clearTimeout(timer)
   timer = setTimeout(() => {
-    const { ok, value, error: err } = parseJsonSafeExtract(input.value)
+    const { ok, value, error: err, repaired } = parseJsonSafeExtract(input.value)
     if (!ok) {
       error.value = err
       return
     }
     output.value = formatJson(value, parseInt(indentSize.value))
     usedUnescape.value = input.value.includes('\\"') && !isDirectParse(input.value)
+    repairedInfo.value = repaired || ''
   }, 200)
 }
 
@@ -99,6 +102,7 @@ function loadExample() {
         </div>
       </div>
       <div v-if="usedUnescape" class="hint">Auto-detected and processed escape characters</div>
+      <div v-if="repairedInfo" class="hint">Auto-repaired: {{ repairedInfo }}</div>
     </div>
 
     <section class="seo-content">

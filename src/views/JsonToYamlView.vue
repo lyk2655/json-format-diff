@@ -5,6 +5,7 @@ import { parseJsonSafeExtract } from '../utils/jsonParse.js'
 const input = ref('')
 const output = ref('')
 const error = ref('')
+const repairedInfo = ref('')
 
 let timer = null
 
@@ -46,16 +47,18 @@ function jsonToYaml(obj, indent = 0) {
 function convert() {
   error.value = ''
   output.value = ''
+  repairedInfo.value = ''
   if (!input.value.trim()) return
   if (timer) clearTimeout(timer)
   timer = setTimeout(() => {
-    const { ok, value, error: err } = parseJsonSafeExtract(input.value)
+    const { ok, value, error: err, repaired } = parseJsonSafeExtract(input.value)
     if (!ok) {
       error.value = err
       return
     }
     try {
       output.value = jsonToYaml(value)
+      repairedInfo.value = repaired || ''
     } catch (e) {
       error.value = `Conversion error: ${e.message}`
     }
@@ -97,6 +100,7 @@ function loadExample() {
           <div v-else class="placeholder-box">YAML output will appear here</div>
         </div>
       </div>
+      <div v-if="repairedInfo" class="hint">Auto-repaired: {{ repairedInfo }}</div>
     </div>
 
     <section class="seo-content">
@@ -179,6 +183,7 @@ textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3
 .btn-copy-small { padding: 0.15rem 0.5rem; font-size: 0.75rem; color: var(--text-muted); background: transparent; border: 1px solid var(--border); border-radius: 4px; }
 .btn-copy-small:hover { color: var(--accent); border-color: var(--accent); }
 .error { padding: 1rem 1.25rem; background: var(--remove-bg); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: var(--radius-sm); color: #dc2626; font-size: 0.9rem; }
+.hint { font-size: 0.8125rem; color: var(--accent); margin-top: 0.75rem; }
 .seo-content { margin-top: 3rem; padding: 2rem; background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow); border: 1px solid var(--border-light); }
 .seo-content h2 { font-size: 1.375rem; font-weight: 700; color: var(--text); margin: 2rem 0 0.75rem; }
 .seo-content h2:first-child { margin-top: 0; }

@@ -69,33 +69,243 @@ function stripJsonComments(str) {
   return out
 }
 
+// ──────────────────────────────────────────────
+// JSON Repair Functions
+// ──────────────────────────────────────────────
+
 /**
- * 尝试解析可能带转义的 JSON 字符串。
- * 1. 先去掉单行、多行注释
- * 2. 直接 JSON.parse
- * 3. 若失败且含反斜杠转义，按双重编码处理
+ * 截掉尾部多余字符：找到最后一个括号平衡的位置，丢弃之后的内容。
+ * 处理 {"a":1}" 或 {"a":1}, extra 等情况
+ */
+function trimTrailingExtra(str) {
+  let depth = 0
+  let inString = false
+  let escape = false
+  let lastBalanced = -1
+  for (let i = 0; i < str.length; i++) {
+    if (escape) { escape = false; continue }
+    if (str[i] === '\\' && inString) { escape = true; continue }
+    if (str[i] === '"') { inString = !inString; continue }
+    if (inString) continue
+    if (str[i] === '{' || str[i] === '[') depth++
+    if (str[i] === '}' || str[i] === ']') {
+      depth--
+      if (depth === 0) lastBalanced = i
+    }
+  }
+  if (lastBalanced >= 0 && lastBalanced < str.length - 1) {
+    return str.slice(0, lastBalanced + 1)
+  }
+  return null
+}
+
+/**
+ * 将单引号字符串转为双引号：{'name':'test'} → {"name":"test"}
+ * 只替换不在双引号字符串内的单引号
+ */
+function repairSingleQuotes(str) {
+  let out = ''
+  let inDouble = false
+  let escape = false
+  for (let i = 0; i < str.length; i++) {
+    if (escape) {
+      out += str[i]
+      escape = false
+      continue
+    }
+    if (str[i] === '\\' && inDouble) {
+      out += str[i]
+      escape = true
+      continue
+    }
+    if (str[i] === '"') {
+      inDouble = !inDouble
+      out += str[i]
+      continue
+    }
+    if (str[i] === "'" && !inDouble) {
+      out += '"'
+    } else {
+      out += str[i]
+    }
+  }
+  return out
+}
+
+/**
+ * 给无引号的 key 补上双引号：{name:"test"} → {"name":"test"}
+ * 匹配 { 或 , 后面紧跟标识符再跟 : 的情况
+ */
+function repairUnquotedKeys(str) {
+  let out = ''
+  let inString = false
+  let escape = false
+  let i = 0
+  while (i < str.length) {
+    if (escape) {
+      out += str[i]
+      escape = false
+      i++
+      continue
+    }
+    if (str[i] === '\\' && inString) {
+      out += str[i]
+      escape = true
+      i++
+      continue
+    }
+    if (str[i] === '"') {
+      inString = !inString
+      out += str[i]
+      i++
+      continue
+    }
+    if (!inString && (str[i] === '{' || str[i] === ',')) {
+      out += str[i]
+      i++
+      // skip whitespace
+      while (i < str.length && /\s/.test(str[i])) {
+        out += str[i]
+        i++
+      }
+      // check if unquoted key (starts with letter, _, $ and is NOT already quoted)
+      if (i < str.length && /[a-zA-Z_$]/.test(str[i])) {
+        let key = ''
+        while (i < str.length && /[a-zA-Z0-9_$\-]/.test(str[i])) {
+          key += str[i]
+          i++
+        }
+        // skip whitespace before colon
+        while (i < str.length && /\s/.test(str[i])) {
+          i++
+        }
+        if (i < str.length && str[i] === ':') {
+          out += '"' + key + '":'
+          i++
+          continue
+        }
+        // not a key, output as-is
+        out += key
+        continue
+      }
+    }
+    out += str[i]
+    i++
+  }
+  return out
+}
+
+/**
+ * 去掉尾随逗号：{"a":1,} → {"a":1}
+ */
+function removeTrailingCommas(str) {
+  let out = ''
+  let inString = false
+  let escape = false
+  for (let i = 0; i < str.length; i++) {
+    if (escape) {
+      out += str[i]
+      escape = false
+      continue
+    }
+    if (str[i] === '\\' && inString) {
+      out += str[i]
+      escape = true
+      continue
+    }
+    if (str[i] === '"') {
+      inString = !inString
+      out += str[i]
+      continue
+    }
+    if (!inString && str[i] === ',') {
+      // look ahead for } or ] (skipping whitespace)
+      let j = i + 1
+      while (j < str.length && /\s/.test(str[j])) j++
+      if (j < str.length && (str[j] === '}' || str[j] === ']')) {
+        continue // skip this comma
+      }
+    }
+    out += str[i]
+  }
+  return out
+}
+
+/**
+ * 综合修复：依次应用所有修复策略，返回修复后的字符串和已应用的修复列表
+ */
+function applyJsonRepairs(str) {
+  const repairs = []
+  let result = str
+
+  // 1. Single quotes → double quotes
+  if (result.includes("'")) {
+    const repaired = repairSingleQuotes(result)
+    if (repaired !== result) {
+      result = repaired
+      repairs.push('Converted single quotes to double quotes')
+    }
+  }
+
+  // 2. Unquoted keys
+  {
+    const repaired = repairUnquotedKeys(result)
+    if (repaired !== result) {
+      result = repaired
+      repairs.push('Added missing quotes around keys')
+    }
+  }
+
+  // 3. Trailing commas
+  {
+    const repaired = removeTrailingCommas(result)
+    if (repaired !== result) {
+      result = repaired
+      repairs.push('Removed trailing commas')
+    }
+  }
+
+  // 4. Trailing extra characters
+  {
+    const trimmed = trimTrailingExtra(result)
+    if (trimmed && trimmed !== result) {
+      result = trimmed
+      repairs.push('Removed extra trailing characters')
+    }
+  }
+
+  return { result, repairs }
+}
+
+/**
+ * 尝试解析可能带转义、格式错误的 JSON 字符串。
+ * 解析链（逐级尝试）：
+ * 1. 去注释 → 直接解析
+ * 2. 缺少外层 {} → 补大括号
+ * 3. 双重编码 → unescape 后解析
+ * 4. 综合修复（单引号、无引号key、尾随逗号、多余尾部字符）→ 解析
  */
 export function parseJsonSafe(input) {
   if (input == null || typeof input !== 'string') {
-    return { ok: false, value: null, error: '输入为空或非字符串' }
+    return { ok: false, value: null, error: 'Input is empty or not a string' }
   }
   let raw = input.trim()
   raw = stripJsonComments(raw).trim()
   if (!raw) {
-    return { ok: false, value: null, error: '输入为空' }
+    return { ok: false, value: null, error: 'Input is empty' }
   }
 
   // 1. 直接解析
   try {
     const value = JSON.parse(raw)
-    return { ok: true, value, error: null }
+    return { ok: true, value, error: null, repaired: null }
   } catch (_) {}
 
-  // 2. 缺少外层 {} 的键值对（如 case1.txt："ackReqTmp":"{\"reqid\":...}"）补上大括号再解析
+  // 2. 缺少外层 {} 的键值对，补上大括号再解析
   if (!raw.startsWith('{') && !raw.startsWith('[') && raw.startsWith('"') && /^"[^"]*":/.test(raw)) {
     try {
       const value = JSON.parse('{' + raw + '}')
-      return { ok: true, value, error: null }
+      return { ok: true, value, error: null, repaired: null }
     } catch (_) {}
   }
 
@@ -104,13 +314,28 @@ export function parseJsonSafe(input) {
     try {
       const unescaped = unescapeJsonString(raw)
       const value = JSON.parse(unescaped)
-      return { ok: true, value, error: null }
-    } catch (e) {
-      return { ok: false, value: null, error: e.message || '解转义后仍无法解析为 JSON' }
+      return { ok: true, value, error: null, repaired: null }
+    } catch (_) {}
+  }
+
+  // 4. 综合修复后解析
+  const { result: repairedStr, repairs } = applyJsonRepairs(raw)
+  if (repairs.length > 0) {
+    try {
+      const value = JSON.parse(repairedStr)
+      return { ok: true, value, error: null, repaired: repairs.join('; ') }
+    } catch (_) {}
+    // 修复后再尝试 unescape + 解析
+    if (repairedStr.includes('\\"') || repairedStr.includes('\\\\') || /\\[nrtuU]/.test(repairedStr)) {
+      try {
+        const unescaped = unescapeJsonString(repairedStr)
+        const value = JSON.parse(unescaped)
+        return { ok: true, value, error: null, repaired: repairs.join('; ') }
+      } catch (_) {}
     }
   }
 
-  return { ok: false, value: null, error: '无效的 JSON' }
+  return { ok: false, value: null, error: 'Invalid JSON. Please check your input for syntax errors.' }
 }
 
 /**
@@ -197,7 +422,11 @@ export function parseJsonSafeExtract(input) {
     if ((trimmed.startsWith('{') && trimmed.includes('}')) || (trimmed.startsWith('[') && trimmed.includes(']'))) {
       const inner = parseJsonSafe(v)
       if (inner.ok && inner.value != null) {
-        return { ok: true, value: inner.value, error: null }
+        // Merge repair info from both levels
+        const repairedParts = []
+        if (result.repaired) repairedParts.push(result.repaired)
+        if (inner.repaired) repairedParts.push(inner.repaired)
+        return { ok: true, value: inner.value, error: null, repaired: repairedParts.length > 0 ? repairedParts.join('; ') : null }
       }
     }
   }

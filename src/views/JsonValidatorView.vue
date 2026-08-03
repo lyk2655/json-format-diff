@@ -4,23 +4,27 @@ import { parseJsonSafe } from '../utils/jsonParse.js'
 
 const input = ref('')
 const result = ref(null) // { valid: bool, error: string, line: number, col: number }
+const repairedInfo = ref('')
 let timer = null
 
 function validate() {
   if (!input.value.trim()) {
     result.value = null
+    repairedInfo.value = ''
     return
   }
   if (timer) clearTimeout(timer)
   timer = setTimeout(() => {
-    const { ok, value, error } = parseJsonSafe(input.value)
+    const { ok, value, error, repaired } = parseJsonSafe(input.value)
     if (ok) {
       const type = Array.isArray(value) ? 'Array' : typeof value
       const keys = typeof value === 'object' && value !== null ? Object.keys(value).length : 0
       result.value = { valid: true, type, keys, error: null }
+      repairedInfo.value = repaired || ''
     } else {
       const lineCol = extractLineCol(error)
       result.value = { valid: false, error, line: lineCol.line, col: lineCol.col }
+      repairedInfo.value = ''
     }
   }, 200)
 }
@@ -74,6 +78,7 @@ function loadInvalidExample() {
           <span v-else> &mdash; {{ result.error }}<span v-if="result.line"> (Line {{ result.line }}, Column {{ result.col }})</span></span>
         </div>
       </div>
+      <div v-if="repairedInfo" class="hint">Auto-repaired: {{ repairedInfo }}</div>
     </div>
 
     <section class="seo-content">
@@ -153,6 +158,7 @@ textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3
 .result-banner.success { background: var(--add-bg); border: 1px solid rgba(34, 197, 94, 0.3); color: #166534; }
 .result-banner.fail { background: var(--remove-bg); border: 1px solid rgba(239, 68, 68, 0.3); color: #991b1b; }
 .result-icon { font-size: 1.5rem; font-weight: 700; }
+.hint { font-size: 0.8125rem; color: var(--accent); margin-top: 0.75rem; }
 .seo-content { margin-top: 3rem; padding: 2rem; background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow); border: 1px solid var(--border-light); }
 .seo-content h2 { font-size: 1.375rem; font-weight: 700; color: var(--text); margin: 2rem 0 0.75rem; }
 .seo-content h2:first-child { margin-top: 0; }

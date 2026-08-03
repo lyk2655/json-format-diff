@@ -7,12 +7,14 @@ const output = ref('')
 const error = ref('')
 const inputSize = ref(0)
 const outputSize = ref(0)
+const repairedInfo = ref('')
 
 let timer = null
 
 function minify() {
   error.value = ''
   output.value = ''
+  repairedInfo.value = ''
   if (!input.value.trim()) {
     inputSize.value = 0
     outputSize.value = 0
@@ -20,7 +22,7 @@ function minify() {
   }
   if (timer) clearTimeout(timer)
   timer = setTimeout(() => {
-    const { ok, value, error: err } = parseJsonSafeExtract(input.value)
+    const { ok, value, error: err, repaired } = parseJsonSafeExtract(input.value)
     if (!ok) {
       error.value = err
       return
@@ -28,6 +30,7 @@ function minify() {
     output.value = JSON.stringify(value)
     inputSize.value = new Blob([input.value]).size
     outputSize.value = new Blob([output.value]).size
+    repairedInfo.value = repaired || ''
   }, 200)
 }
 
@@ -85,6 +88,7 @@ function onInput() {
           <div v-if="output && inputSize" class="savings">Saved {{ (100 - (outputSize / inputSize * 100)).toFixed(1) }}% ({{ inputSize - outputSize }} bytes)</div>
         </div>
       </div>
+      <div v-if="repairedInfo" class="hint">Auto-repaired: {{ repairedInfo }}</div>
     </div>
 
     <section class="seo-content">
@@ -157,6 +161,7 @@ textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3
 .btn-copy-small { padding: 0.15rem 0.5rem; font-size: 0.75rem; color: var(--text-muted); background: transparent; border: 1px solid var(--border); border-radius: 4px; }
 .btn-copy-small:hover { color: var(--accent); border-color: var(--accent); }
 .savings { margin-top: 0.5rem; font-size: 0.75rem; color: var(--add); font-weight: 500; }
+.hint { font-size: 0.8125rem; color: var(--accent); margin-top: 0.75rem; }
 .error { padding: 1rem 1.25rem; background: var(--remove-bg); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: var(--radius-sm); color: #dc2626; font-size: 0.9rem; }
 .seo-content { margin-top: 3rem; padding: 2rem; background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow); border: 1px solid var(--border-light); }
 .seo-content h2 { font-size: 1.375rem; font-weight: 700; color: var(--text); margin: 2rem 0 0.75rem; }

@@ -11,6 +11,7 @@ const diffNoChange = ref(false)
 const diffLoading = ref(false)
 const diffFormattedResult = ref('')
 const diffError = ref('')
+const diffRepaired = ref('')
 const diffOutputRef = ref(null)
 
 const diffpatcher = jsondiffpatch.create({
@@ -23,6 +24,7 @@ function doDiff() {
   diffRows.value = []
   diffNoChange.value = false
   diffFormattedResult.value = ''
+  diffRepaired.value = ''
   diffLoading.value = true
   const leftResult = parseJsonSafeExtract(leftInput.value)
   const rightResult = parseJsonSafeExtract(rightInput.value)
@@ -36,6 +38,11 @@ function doDiff() {
     diffLoading.value = false
     return
   }
+  // Collect repair info
+  const repairParts = []
+  if (leftResult.repaired) repairParts.push(`Left: ${leftResult.repaired}`)
+  if (rightResult.repaired) repairParts.push(`Right: ${rightResult.repaired}`)
+  if (repairParts.length > 0) diffRepaired.value = repairParts.join('; ')
   const delta = diffpatcher.diff(leftResult.value, rightResult.value)
   if (delta === undefined) {
     diffNoChange.value = true
@@ -173,6 +180,7 @@ function scrollToNextDiff() {
         <button class="btn-primary" @click="doDiff" :disabled="diffLoading">
           {{ diffLoading ? 'Comparing...' : 'Compare JSON' }}
         </button>
+        <div v-if="diffRepaired" class="hint">Auto-repaired: {{ diffRepaired }}</div>
         <div v-if="diffError" class="error">{{ diffError }}</div>
         <div v-if="diffNoChange" class="diff-output diff-no-change-wrap">
           <p class="diff-no-change-msg">Both JSON objects are identical. No differences found.</p>
