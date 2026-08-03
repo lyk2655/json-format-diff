@@ -1,5 +1,5 @@
 :root {
-  /* 现代 Indigo 主题 - 专业、舒适 */
+  /* Modern Indigo Theme - Light Mode */
   --bg: #f8fafc;
   --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%);
   --surface: #ffffff;
@@ -25,6 +25,53 @@
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
   --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --diff-removed-bg: #fecaca;
+  --diff-removed-text: #991b1b;
+  --diff-removed-border: #dc2626;
+  --diff-added-bg: #bbf7d0;
+  --diff-added-text: #166534;
+  --diff-added-border: #22c55e;
+  --json-null: #6b7280;
+  --json-bool: #8b5cf6;
+  --json-num: #3b82f6;
+  --json-str: #14b8a6;
+  --json-key: #6366f1;
+  --loading-bg: rgba(99, 102, 241, 0.1);
+}
+
+[data-theme="dark"] {
+  --bg: #0f172a;
+  --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #1e293b 100%);
+  --surface: #1e293b;
+  --surface-hover: #334155;
+  --surface-elevated: #1e293b;
+  --border: #334155;
+  --border-light: #1e293b;
+  --text: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-subtle: #64748b;
+  --accent: #818cf8;
+  --accent-hover: #6366f1;
+  --accent-light: rgba(99, 102, 241, 0.15);
+  --add: #4ade80;
+  --add-bg: rgba(74, 222, 128, 0.12);
+  --remove: #f87171;
+  --remove-bg: rgba(248, 113, 113, 0.12);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.2);
+  --diff-removed-bg: rgba(248, 113, 113, 0.25);
+  --diff-removed-text: #fca5a5;
+  --diff-removed-border: #f87171;
+  --diff-added-bg: rgba(74, 222, 128, 0.25);
+  --diff-added-text: #86efac;
+  --diff-added-border: #4ade80;
+  --json-null: #9ca3af;
+  --json-bool: #a78bfa;
+  --json-num: #60a5fa;
+  --json-str: #2dd4bf;
+  --json-key: #818cf8;
+  --loading-bg: rgba(99, 102, 241, 0.15);
 }
 
 * {
@@ -39,6 +86,7 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
 #app {
@@ -56,4 +104,143 @@ button {
 textarea {
   font-family: var(--font-mono);
   resize: vertical;
+}
+
+/* Loading spinner */
+.loading-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--accent-light);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Skeleton loading */
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-hover) 25%, var(--border-light) 50%, var(--surface-hover) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Fade transition */
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+
+/* Slide transition */
+.slide-enter-active, .slide-leave-active {
+  transition: all 0.25s ease;
+}
+.slide-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+.slide-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+/* Empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  text-align: center;
+  color: var(--text-subtle);
+}
+
+.empty-state svg {
+  margin-bottom: 1rem;
+  opacity: 0.4;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+/* Tree view styles */
+.tree-view {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  padding: 1rem 1.25rem;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: auto;
+  max-height: 60vh;
+}
+
+.tree-node {
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.tree-toggle {
+  cursor: pointer;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.tree-toggle::before {
+  content: '\25BC';
+  font-size: 0.6rem;
+  color: var(--text-subtle);
+  transition: transform 0.15s;
+  display: inline-block;
+  width: 12px;
+}
+
+.tree-toggle.collapsed::before {
+  transform: rotate(-90deg);
+}
+
+.tree-summary {
+  color: var(--text-subtle);
+  font-style: italic;
+  margin-left: 0.25rem;
+}
+
+.tree-key {
+  color: var(--json-key);
+}
+
+.tree-null {
+  color: var(--json-null);
+}
+
+.tree-bool {
+  color: var(--json-bool);
+}
+
+.tree-num {
+  color: var(--json-num);
+}
+
+.tree-str {
+  color: var(--json-str);
+}
+
+.tree-bracket {
+  color: var(--text-muted);
 }

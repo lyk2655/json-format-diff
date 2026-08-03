@@ -20,7 +20,23 @@ import NavBar from './components/NavBar.vue'
               <router-link to="/json-formatter">JSON Formatter</router-link>
               <router-link to="/json-validator">JSON Validator</router-link>
               <router-link to="/json-minify">JSON Minify</router-link>
+              <router-link to="/json-viewer">JSON Viewer</router-link>
+            </nav>
+          </div>
+          <div class="footer-col">
+            <h4>Converters</h4>
+            <nav>
               <router-link to="/json-to-yaml">JSON to YAML</router-link>
+              <router-link to="/yaml-to-json">YAML to JSON</router-link>
+              <router-link to="/xml-to-json">XML to JSON</router-link>
+            </nav>
+          </div>
+          <div class="footer-col">
+            <h4>Articles</h4>
+            <nav>
+              <router-link to="/articles/how-to-compare-json">How to Compare JSON</router-link>
+              <router-link to="/articles/json-diff-vs-text-diff">JSON Diff vs Text Diff</router-link>
+              <router-link to="/articles/json-best-practices">JSON Best Practices</router-link>
             </nav>
           </div>
           <div class="footer-col">
@@ -28,11 +44,6 @@ import NavBar from './components/NavBar.vue'
             <nav>
               <router-link to="/about">About</router-link>
               <router-link to="/contact">Contact</router-link>
-            </nav>
-          </div>
-          <div class="footer-col">
-            <h4>Legal</h4>
-            <nav>
               <router-link to="/privacy-policy">Privacy Policy</router-link>
               <router-link to="/terms-of-service">Terms of Service</router-link>
             </nav>
@@ -59,13 +70,14 @@ import NavBar from './components/NavBar.vue'
   padding: 2.5rem 1.5rem 1.5rem;
   background: var(--surface);
   border-top: 1px solid var(--border-light);
+  transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .footer-content {
   max-width: 1280px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: 1fr 2fr;
+  grid-template-columns: 1fr 3fr;
   gap: 3rem;
   padding-bottom: 2rem;
   border-bottom: 1px solid var(--border-light);
@@ -92,7 +104,7 @@ import NavBar from './components/NavBar.vue'
 
 .footer-links {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 2rem;
 }
 
@@ -146,8 +158,8 @@ import NavBar from './components/NavBar.vue'
   }
 
   .footer-links {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
   }
 
   .footer-brand {
@@ -157,7 +169,7 @@ import NavBar from './components/NavBar.vue'
 
 @media (max-width: 480px) {
   .footer-links {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
   }
 }
 </style>

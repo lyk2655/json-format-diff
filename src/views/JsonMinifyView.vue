@@ -136,6 +136,8 @@ function onInput() {
         <li><router-link to="/json-formatter">JSON Formatter</router-link> — Beautify minified JSON</li>
         <li><router-link to="/json-validator">JSON Validator</router-link> — Check JSON syntax</li>
         <li><router-link to="/json-to-yaml">JSON to YAML</router-link> — Convert JSON to YAML</li>
+        <li><router-link to="/json-viewer">JSON Viewer</router-link> — View JSON in a tree</li>
+        <li><router-link to="/yaml-to-json">YAML to JSON</router-link> — Convert YAML to JSON</li>
       </ul>
     </section>
   </div>

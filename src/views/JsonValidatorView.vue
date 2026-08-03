@@ -136,6 +136,8 @@ function loadInvalidExample() {
         <li><router-link to="/json-formatter">JSON Formatter</router-link> — Beautify JSON data</li>
         <li><router-link to="/json-minify">JSON Minifier</router-link> — Compress JSON to one line</li>
         <li><router-link to="/json-to-yaml">JSON to YAML</router-link> — Convert JSON to YAML format</li>
+        <li><router-link to="/json-viewer">JSON Viewer</router-link> — View JSON in an interactive tree</li>
+        <li><router-link to="/xml-to-json">XML to JSON</router-link> — Convert XML to JSON format</li>
       </ul>
     </section>
   </div>

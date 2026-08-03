@@ -23,7 +23,10 @@ function goHome() {
           <router-link to="/json-formatter">JSON Formatter</router-link>
           <router-link to="/json-validator">JSON Validator</router-link>
           <router-link to="/json-minify">JSON Minifier</router-link>
+          <router-link to="/json-viewer">JSON Viewer</router-link>
           <router-link to="/json-to-yaml">JSON to YAML</router-link>
+          <router-link to="/yaml-to-json">YAML to JSON</router-link>
+          <router-link to="/xml-to-json">XML to JSON</router-link>
         </nav>
       </div>
     </div>

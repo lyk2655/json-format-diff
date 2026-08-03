@@ -1,5 +1,5 @@
 <script setup>
-import { ref, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, nextTick, onMounted, onUnmounted, computed } from 'vue'
 import { parseJsonSafeExtract, formatJson } from '../utils/jsonParse.js'
 import * as jsondiffpatch from 'jsondiffpatch'
 import { formatSideBySide } from '../utils/sideBySideDiff.js'
@@ -16,10 +16,23 @@ const diffOutputRef = ref(null)
 const dragOverLeft = ref(false)
 const dragOverRight = ref(false)
 
-const diffpatcher = jsondiffpatch.create({
-  objectHash: (obj) => obj?.id ?? obj?.name ?? JSON.stringify(obj),
-  arrays: { detectMove: true },
-})
+// Diff options
+const ignoreKeyOrder = ref(false)
+const ignoreArrayOrder = ref(false)
+const showTree = ref(false)
+
+const hasResults = computed(() => diffRows.value.length > 0 || diffNoChange.value || !!diffFormattedResult.value)
+
+function createDiffer() {
+  const opts = {
+    objectHash: (obj) => obj?.id ?? obj?.name ?? JSON.stringify(obj),
+    arrays: { detectMove: true, ignoreOrder: ignoreArrayOrder.value },
+  }
+  if (ignoreKeyOrder.value) {
+    opts.objectHash = (obj) => JSON.stringify(obj)
+  }
+  return jsondiffpatch.create(opts)
+}
 
 function doDiff() {
   diffError.value = ''
@@ -28,6 +41,7 @@ function doDiff() {
   diffFormattedResult.value = ''
   diffRepaired.value = ''
   diffLoading.value = true
+  showTree.value = false
   const leftResult = parseJsonSafeExtract(leftInput.value)
   const rightResult = parseJsonSafeExtract(rightInput.value)
   if (!leftResult.ok) {
@@ -44,7 +58,8 @@ function doDiff() {
   if (leftResult.repaired) repairParts.push(`Left: ${leftResult.repaired}`)
   if (rightResult.repaired) repairParts.push(`Right: ${rightResult.repaired}`)
   if (repairParts.length > 0) diffRepaired.value = repairParts.join('; ')
-  const delta = diffpatcher.diff(leftResult.value, rightResult.value)
+  const differ = createDiffer()
+  const delta = differ.diff(leftResult.value, rightResult.value)
   if (delta === undefined) {
     diffNoChange.value = true
     diffFormattedResult.value = formatJson(leftResult.value)
@@ -351,6 +366,18 @@ onUnmounted(() => {
           <span class="shortcut-hint">Ctrl + Enter to compare</span>
         </div>
 
+        <!-- Options -->
+        <div class="options-bar">
+          <label class="option-chip">
+            <input type="checkbox" v-model="ignoreKeyOrder" />
+            <span>Ignore Key Order</span>
+          </label>
+          <label class="option-chip">
+            <input type="checkbox" v-model="ignoreArrayOrder" />
+            <span>Ignore Array Order</span>
+          </label>
+        </div>
+
         <div class="two-cols">
           <div
             class="field"
@@ -400,10 +427,22 @@ onUnmounted(() => {
           </div>
         </div>
         <button class="btn-primary" @click="doDiff" :disabled="diffLoading">
+          <span v-if="diffLoading" class="loading-spinner"></span>
           {{ diffLoading ? 'Comparing...' : 'Compare JSON' }}
         </button>
         <div v-if="diffRepaired" class="hint">Auto-repaired: {{ diffRepaired }}</div>
         <div v-if="diffError" class="error">{{ diffError }}</div>
+
+        <!-- Empty state when no results and no error -->
+        <div v-if="!diffLoading && !hasResults && !diffError && !leftInput && !rightInput" class="empty-state">
+          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="9" y1="13" x2="15" y2="13"/>
+            <line x1="9" y1="17" x2="15" y2="17"/>
+          </svg>
+          <p>Paste JSON on both sides, then click "Compare JSON" to see the differences.</p>
+        </div>
         <div v-if="diffNoChange" class="diff-output diff-no-change-wrap">
           <p class="diff-no-change-msg">Both JSON objects are identical. No differences found.</p>
           <div class="field result">
@@ -513,7 +552,10 @@ onUnmounted(() => {
         <li><router-link to="/json-formatter">JSON Formatter</router-link> — Beautify and pretty-print JSON data</li>
         <li><router-link to="/json-validator">JSON Validator</router-link> — Check JSON syntax for errors</li>
         <li><router-link to="/json-minify">JSON Minifier</router-link> — Compress JSON to reduce file size</li>
+        <li><router-link to="/json-viewer">JSON Viewer</router-link> — View JSON in an interactive tree structure</li>
         <li><router-link to="/json-to-yaml">JSON to YAML Converter</router-link> — Convert JSON to YAML format</li>
+        <li><router-link to="/yaml-to-json">YAML to JSON Converter</router-link> — Convert YAML to JSON format</li>
+        <li><router-link to="/xml-to-json">XML to JSON Converter</router-link> — Convert XML to JSON format</li>
       </ul>
     </section>
 
@@ -624,6 +666,40 @@ onUnmounted(() => {
   font-size: 0.75rem;
   color: var(--text-subtle);
   font-family: var(--font-mono);
+}
+
+.options-bar {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.option-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.option-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.option-chip input {
+  accent-color: var(--accent);
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
 }
 
 .field {
@@ -899,21 +975,21 @@ textarea::placeholder {
 }
 
 .diff-line :deep(.diff-removed) {
-  background: #fecaca;
-  color: #991b1b;
+  background: var(--diff-removed-bg);
+  color: var(--diff-removed-text);
   padding: 2px 4px;
   border-radius: 4px;
-  border: 1px solid #dc2626;
+  border: 1px solid var(--diff-removed-border);
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
 
 .diff-line :deep(.diff-added) {
-  background: #bbf7d0;
-  color: #166534;
+  background: var(--diff-added-bg);
+  color: var(--diff-added-text);
   padding: 2px 4px;
   border-radius: 4px;
-  border: 1px solid #22c55e;
+  border: 1px solid var(--diff-added-border);
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }

@@ -15,17 +15,15 @@ const routes = [
         description: 'Compare two JSON objects side by side with visual diff highlighting. Free online JSON diff tool.',
         applicationCategory: 'DeveloperApplication',
         operatingSystem: 'Any',
-        offers: {
-          '@type': 'Offer',
-          price: '0',
-          priceCurrency: 'USD',
-        },
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
         featureList: [
           'Side-by-side JSON comparison',
           'Visual diff highlighting',
           'Auto-repair invalid JSON',
           'Escape character support',
           'Comment stripping',
+          'Ignore key/array order',
+          'Drag & drop files',
           'No data stored - browser-side processing',
         ],
       },
@@ -103,6 +101,110 @@ const routes = [
       },
     },
   },
+  {
+    path: '/yaml-to-json',
+    name: 'yaml-to-json',
+    component: () => import('../views/YamlToJsonView.vue'),
+    meta: {
+      title: 'YAML to JSON Converter Online - Free Tool',
+      description: 'Convert YAML to JSON format online for free. Fast, accurate YAML to JSON conversion with syntax validation and copy support.',
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@type': 'WebApplication',
+        name: 'YAML to JSON Converter',
+        description: 'Convert YAML to JSON format online for free.',
+        applicationCategory: 'DeveloperApplication',
+        operatingSystem: 'Any',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+      },
+    },
+  },
+  {
+    path: '/xml-to-json',
+    name: 'xml-to-json',
+    component: () => import('../views/XmlToJsonView.vue'),
+    meta: {
+      title: 'XML to JSON Converter Online - Free Tool',
+      description: 'Convert XML to JSON format online for free. Fast XML to JSON converter with attribute support and copy to clipboard.',
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@type': 'WebApplication',
+        name: 'XML to JSON Converter',
+        description: 'Convert XML to JSON format online for free.',
+        applicationCategory: 'DeveloperApplication',
+        operatingSystem: 'Any',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+      },
+    },
+  },
+  {
+    path: '/json-viewer',
+    name: 'json-viewer',
+    component: () => import('../views/JsonViewerView.vue'),
+    meta: {
+      title: 'JSON Viewer Online - Interactive JSON Tree Viewer | Free Tool',
+      description: 'View JSON data in an interactive, collapsible tree structure. Free online JSON viewer with syntax highlighting and nested object support.',
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@type': 'WebApplication',
+        name: 'JSON Viewer',
+        description: 'View JSON data in an interactive, collapsible tree structure.',
+        applicationCategory: 'DeveloperApplication',
+        operatingSystem: 'Any',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+      },
+    },
+  },
+  // Articles
+  {
+    path: '/articles/how-to-compare-json',
+    name: 'article-how-to-compare-json',
+    component: () => import('../views/articles/HowToCompareJsonView.vue'),
+    meta: {
+      title: 'How to Compare JSON: A Complete Guide | JSON Diff Tools',
+      description: 'Learn how to compare JSON data effectively. Complete guide covering JSON diff tools, command-line methods, programming libraries, and best practices.',
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@type': 'Article',
+        headline: 'How to Compare JSON: A Complete Guide',
+        datePublished: '2026-08-03',
+        author: { '@type': 'Organization', name: 'JSON Diff Tools' },
+      },
+    },
+  },
+  {
+    path: '/articles/json-diff-vs-text-diff',
+    name: 'article-json-diff-vs-text-diff',
+    component: () => import('../views/articles/JsonDiffVsTextDiffView.vue'),
+    meta: {
+      title: 'JSON Diff vs Text Diff: Which Should You Use? | JSON Diff Tools',
+      description: 'Understand the difference between JSON diff and text diff. Learn when to use each approach for comparing JSON data accurately.',
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@type': 'Article',
+        headline: 'JSON Diff vs Text Diff: Which Should You Use?',
+        datePublished: '2026-08-03',
+        author: { '@type': 'Organization', name: 'JSON Diff Tools' },
+      },
+    },
+  },
+  {
+    path: '/articles/json-best-practices',
+    name: 'article-json-best-practices',
+    component: () => import('../views/articles/JsonBestPracticesView.vue'),
+    meta: {
+      title: 'JSON Best Practices: A Developer\'s Guide | JSON Diff Tools',
+      description: '12 essential JSON best practices for developers. Learn proper formatting, validation, data types, structure, and tool usage.',
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@type': 'Article',
+        headline: 'JSON Best Practices: A Developer\'s Guide',
+        datePublished: '2026-08-03',
+        author: { '@type': 'Organization', name: 'JSON Diff Tools' },
+      },
+    },
+  },
+  // Static pages
   {
     path: '/about',
     name: 'about',
@@ -195,31 +297,18 @@ function setJsonLd(data) {
 }
 
 router.afterEach((to) => {
-  // Title
   document.title = to.meta.title || 'JSON Diff Tools'
-
-  // Description
-  if (to.meta.description) {
-    setMetaTag('name', 'description', to.meta.description)
-  }
-
-  // Canonical URL (dynamic based on current origin)
+  if (to.meta.description) setMetaTag('name', 'description', to.meta.description)
   const canonicalUrl = window.location.origin + to.path
   setCanonical(canonicalUrl)
-
-  // Open Graph
   setMetaTag('property', 'og:title', to.meta.title || 'JSON Diff Tools')
   setMetaTag('property', 'og:description', to.meta.description || '')
   setMetaTag('property', 'og:url', canonicalUrl)
   setMetaTag('property', 'og:type', 'website')
   setMetaTag('property', 'og:site_name', 'JSON Diff Tools')
-
-  // Twitter Card
   setMetaTag('name', 'twitter:card', 'summary')
   setMetaTag('name', 'twitter:title', to.meta.title || 'JSON Diff Tools')
   setMetaTag('name', 'twitter:description', to.meta.description || '')
-
-  // JSON-LD Structured Data
   setJsonLd(to.meta.jsonLd || null)
 })
 
