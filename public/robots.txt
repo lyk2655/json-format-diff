@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://json-format-diff.pages.dev/sitemap.xml
+Sitemap: https://jsondifftools.com/sitemap.xml
