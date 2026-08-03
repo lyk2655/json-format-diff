@@ -1,6 +1,6 @@
 <script setup>
-import { ref, nextTick } from 'vue'
-import { parseJsonSafeExtract } from '../utils/jsonParse.js'
+import { ref, nextTick, onMounted, onUnmounted } from 'vue'
+import { parseJsonSafeExtract, formatJson } from '../utils/jsonParse.js'
 import * as jsondiffpatch from 'jsondiffpatch'
 import { formatSideBySide } from '../utils/sideBySideDiff.js'
 
@@ -13,6 +13,8 @@ const diffFormattedResult = ref('')
 const diffError = ref('')
 const diffRepaired = ref('')
 const diffOutputRef = ref(null)
+const dragOverLeft = ref(false)
+const dragOverRight = ref(false)
 
 const diffpatcher = jsondiffpatch.create({
   objectHash: (obj) => obj?.id ?? obj?.name ?? JSON.stringify(obj),
@@ -38,7 +40,6 @@ function doDiff() {
     diffLoading.value = false
     return
   }
-  // Collect repair info
   const repairParts = []
   if (leftResult.repaired) repairParts.push(`Left: ${leftResult.repaired}`)
   if (rightResult.repaired) repairParts.push(`Right: ${rightResult.repaired}`)
@@ -148,31 +149,252 @@ function scrollToNextDiff() {
   if (!target && elements.length > 0) target = elements[elements.length - 1]
   target?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 }
+
+// --- New UX Features ---
+
+function loadExample() {
+  leftInput.value = JSON.stringify({
+    "name": "John Doe",
+    "age": 30,
+    "email": "john@example.com",
+    "address": {
+      "city": "New York",
+      "zip": "10001"
+    },
+    "hobbies": ["reading", "coding", "gaming"],
+    "active": true
+  })
+  rightInput.value = JSON.stringify({
+    "name": "John Doe",
+    "age": 31,
+    "email": "john.doe@example.com",
+    "address": {
+      "city": "Boston",
+      "zip": "02101"
+    },
+    "hobbies": ["reading", "coding", "traveling"],
+    "active": true,
+    "phone": "+1-555-0100"
+  })
+  doDiff()
+}
+
+function clearAll() {
+  leftInput.value = ''
+  rightInput.value = ''
+  diffRows.value = []
+  diffNoChange.value = false
+  diffFormattedResult.value = ''
+  diffError.value = ''
+  diffRepaired.value = ''
+  diffLoading.value = false
+}
+
+function swapInputs() {
+  const temp = leftInput.value
+  leftInput.value = rightInput.value
+  rightInput.value = temp
+  if (diffRows.value.length || diffNoChange.value || diffError.value) {
+    doDiff()
+  }
+}
+
+async function pasteFromClipboard(target) {
+  try {
+    const text = await navigator.clipboard.readText()
+    if (target === 'left') {
+      leftInput.value = text
+    } else {
+      rightInput.value = text
+    }
+  } catch {
+    // Clipboard API not available, user can paste manually
+  }
+}
+
+function handleDrop(e, target) {
+  e.preventDefault()
+  if (target === 'left') dragOverLeft.value = false
+  else dragOverRight.value = false
+
+  const files = e.dataTransfer?.files
+  if (files && files.length > 0) {
+    const file = files[0]
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const text = ev.target?.result
+      if (typeof text === 'string') {
+        if (target === 'left') leftInput.value = text
+        else rightInput.value = text
+      }
+    }
+    reader.readAsText(file)
+    return
+  }
+
+  // Also support dropping text
+  const text = e.dataTransfer?.getData('text/plain')
+  if (text) {
+    if (target === 'left') leftInput.value = text
+    else rightInput.value = text
+  }
+}
+
+function handleDragOver(e, target) {
+  e.preventDefault()
+  if (target === 'left') dragOverLeft.value = true
+  else dragOverRight.value = true
+}
+
+function handleDragLeave(target) {
+  if (target === 'left') dragOverLeft.value = false
+  else dragOverRight.value = false
+}
+
+function downloadResult() {
+  let content = ''
+  let filename = 'json-diff-result'
+
+  if (diffRows.value.length) {
+    // Download as side-by-side text
+    const lines = []
+    for (const row of diffRows.value) {
+      const left = (row.left || '').replace(/<[^>]*>/g, '').trim()
+      const right = (row.right || '').replace(/<[^>]*>/g, '').trim()
+      if (left !== right) {
+        lines.push(`- ${left}`)
+        lines.push(`+ ${right}`)
+      } else {
+        lines.push(`  ${left}`)
+      }
+    }
+    content = lines.join('\n')
+    filename = 'json-diff-result.txt'
+  } else if (diffFormattedResult.value) {
+    content = diffFormattedResult.value
+    filename = 'json-diff-result.json'
+  } else {
+    return
+  }
+
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+function handleKeydown(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault()
+    doDiff()
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeydown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeydown)
+})
 </script>
 
 <template>
   <div class="page">
     <header class="page-header">
       <h1>JSON Diff - Compare Two JSON Files Online</h1>
-      <p class="subtitle">Compare JSON side by side with visual diff highlighting. Supports escaped strings, comments, and auto-extraction.</p>
+      <p class="subtitle">Compare JSON side by side with visual diff highlighting. Supports escaped strings, comments, auto-repair, and drag & drop.</p>
     </header>
 
     <main class="main">
       <section class="panel">
+        <!-- Toolbar -->
+        <div class="toolbar">
+          <button class="btn-tool" type="button" @click="loadExample" title="Load example data">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="9" y1="13" x2="15" y2="13"/>
+              <line x1="9" y1="17" x2="15" y2="17"/>
+            </svg>
+            Load Example
+          </button>
+          <button class="btn-tool" type="button" @click="clearAll" title="Clear all inputs and results">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+            Clear
+          </button>
+          <button class="btn-tool" type="button" @click="swapInputs" title="Swap left and right JSON">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="17 1 21 5 17 9"/>
+              <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+              <polyline points="7 23 3 19 7 15"/>
+              <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+            </svg>
+            Swap
+          </button>
+          <button class="btn-tool" type="button" @click="downloadResult" v-if="diffRows.length || diffFormattedResult" title="Download diff result">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download
+          </button>
+          <span class="shortcut-hint">Ctrl + Enter to compare</span>
+        </div>
+
         <div class="two-cols">
-          <div class="field">
-            <label>Left JSON (Original)</label>
+          <div
+            class="field"
+            :class="{ 'drag-over': dragOverLeft }"
+            @drop="handleDrop($event, 'left')"
+            @dragover="handleDragOver($event, 'left')"
+            @dragleave="handleDragLeave('left')"
+          >
+            <div class="label-row">
+              <label>Left JSON (Original)</label>
+              <button class="btn-mini" type="button" @click="pasteFromClipboard('left')" title="Paste from clipboard">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                  <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                </svg>
+                Paste
+              </button>
+            </div>
             <textarea
               v-model="leftInput"
-              placeholder='e.g., {"a":1,"b":2}'
+              placeholder='Paste JSON or drag & drop a file here'
               rows="10"
             />
           </div>
-          <div class="field">
-            <label>Right JSON (Modified)</label>
+          <div
+            class="field"
+            :class="{ 'drag-over': dragOverRight }"
+            @drop="handleDrop($event, 'right')"
+            @dragover="handleDragOver($event, 'right')"
+            @dragleave="handleDragLeave('right')"
+          >
+            <div class="label-row">
+              <label>Right JSON (Modified)</label>
+              <button class="btn-mini" type="button" @click="pasteFromClipboard('right')" title="Paste from clipboard">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                  <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                </svg>
+                Paste
+              </button>
+            </div>
             <textarea
               v-model="rightInput"
-              placeholder='e.g., {"a":1,"b":3}'
+              placeholder='Paste JSON or drag & drop a file here'
               rows="10"
             />
           </div>
@@ -228,21 +450,27 @@ function scrollToNextDiff() {
 
       <h2>How to Compare Two JSON Files</h2>
       <ol>
-        <li>Paste your original JSON into the left text box</li>
-        <li>Paste your modified JSON into the right text box</li>
-        <li>Click the "Compare JSON" button</li>
+        <li>Paste your original JSON into the left text box, or drag &amp; drop a .json file</li>
+        <li>Paste your modified JSON into the right text box, or drag &amp; drop a .json file</li>
+        <li>Click the "Compare JSON" button (or press <code>Ctrl + Enter</code>)</li>
         <li>View the highlighted differences in the side-by-side output</li>
         <li>Red highlights show removed or changed values in the original</li>
         <li>Green highlights show added or changed values in the modified version</li>
+        <li>Use the download button to save the diff result for later reference</li>
       </ol>
 
       <h2>Key Features</h2>
       <ul>
         <li><strong>Side-by-side comparison:</strong> View both JSON versions simultaneously with aligned rows</li>
         <li><strong>Visual highlighting:</strong> Red for deletions, green for additions</li>
+        <li><strong>Drag &amp; drop files:</strong> Drop .json files directly into the input areas</li>
+        <li><strong>Paste from clipboard:</strong> One-click paste button for each input</li>
+        <li><strong>Auto-repair:</strong> Automatically fixes common JSON errors like single quotes, unquoted keys, trailing commas, and extra characters</li>
         <li><strong>Escape character support:</strong> Automatically handles <code>\"</code>, <code>\n</code>, <code>\uXXXX</code> and other escape sequences</li>
         <li><strong>Comment stripping:</strong> Supports JSON with <code>//</code> and <code>/* */</code> comments</li>
-        <li><strong>Auto-extraction:</strong> Automatically extracts JSON from wrapper objects</li>
+        <li><strong>Swap inputs:</strong> Instantly swap left and right JSON for reverse comparison</li>
+        <li><strong>Keyboard shortcut:</strong> Press <code>Ctrl + Enter</code> to compare instantly</li>
+        <li><strong>Download results:</strong> Save the diff output as a text file</li>
         <li><strong>No data stored:</strong> All processing happens in your browser — your data never leaves your device</li>
       </ul>
 
@@ -253,6 +481,7 @@ function scrollToNextDiff() {
         <li><strong>Data Migration:</strong> Verify data integrity before and after migration</li>
         <li><strong>Debugging:</strong> Identify unexpected changes in JSON payloads</li>
         <li><strong>Version Control:</strong> Compare JSON data across different versions</li>
+        <li><strong>Testing:</strong> Verify expected vs actual JSON responses in test suites</li>
       </ul>
 
       <h2>Frequently Asked Questions</h2>
@@ -263,14 +492,20 @@ function scrollToNextDiff() {
         <h3>Is my JSON data safe?</h3>
         <p>Absolutely. All JSON processing happens entirely in your browser. Your data is never sent to any server, stored, or logged. You can safely use this tool with sensitive data.</p>
 
+        <h3>Can I drag and drop JSON files?</h3>
+        <p>Yes. You can drag and drop .json files directly into either input area. The file content will be loaded automatically.</p>
+
         <h3>Does it support JSON with comments?</h3>
         <p>Yes. The tool automatically strips <code>//</code> single-line comments and <code>/* */</code> multi-line comments before parsing, so you can compare JSONC files directly.</p>
 
         <h3>Can it handle escaped JSON strings?</h3>
         <p>Yes. If your JSON contains double-escaped strings (e.g., <code>{\"key\":\"value\"}</code>), the tool automatically detects and processes the escape characters before comparison.</p>
 
-        <h3>What happens if the JSON is invalid?</h3>
-        <p>The tool will display an error message indicating which side (left or right) has invalid JSON and what the parse error is, helping you quickly identify and fix the issue.</p>
+        <h3>What if my JSON has syntax errors?</h3>
+        <p>The tool includes an auto-repair feature that can fix common JSON errors automatically, including single quotes, unquoted keys, trailing commas, and extra characters. If the JSON still cannot be parsed after repair attempts, it will display a clear error message indicating which side has the issue.</p>
+
+        <h3>Is there a keyboard shortcut?</h3>
+        <p>Yes. Press <code>Ctrl + Enter</code> (or <code>Cmd + Enter</code> on Mac) to instantly compare the two JSON inputs.</p>
       </div>
 
       <h2>Related Tools</h2>
@@ -354,22 +589,87 @@ function scrollToNextDiff() {
   to { opacity: 1; transform: translateY(0); }
 }
 
-.field {
+/* Toolbar */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   margin-bottom: 1.25rem;
+  flex-wrap: wrap;
 }
 
-.field label {
-  display: block;
+.btn-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
   font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--text);
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.btn-tool:hover {
+  color: var(--accent);
+  background: var(--accent-light);
+  border-color: var(--accent);
+}
+
+.shortcut-hint {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--text-subtle);
+  font-family: var(--font-mono);
+}
+
+.field {
+  margin-bottom: 1.25rem;
+  transition: all 0.2s ease;
+}
+
+.field.drag-over {
+  outline: 2px dashed var(--accent);
+  outline-offset: 4px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-light);
+}
+
+.label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 0.5rem;
 }
 
-.label-hint {
-  font-weight: 400;
-  color: var(--text-muted);
+.label-row label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.btn-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.5rem;
   font-size: 0.75rem;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.btn-mini:hover {
+  color: var(--accent);
+  background: var(--accent-light);
+  border-color: var(--border);
 }
 
 .field label code {
@@ -391,6 +691,7 @@ textarea {
   font-size: 0.875rem;
   line-height: 1.6;
   transition: border-color 0.2s, box-shadow 0.2s;
+  resize: vertical;
 }
 
 textarea:focus {
@@ -763,6 +1064,10 @@ textarea::placeholder {
     width: 40px;
     height: 40px;
     border-radius: 10px;
+  }
+
+  .shortcut-hint {
+    display: none;
   }
 }
 </style>

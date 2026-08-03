@@ -1,0 +1,19 @@
+{
+  "name": "JSON Diff Tools - Compare, Format, Validate & Convert JSON",
+  "short_name": "JSON Diff Tools",
+  "description": "Free online JSON tools: diff, format, validate, minify, and convert JSON. All processing happens in your browser.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["developer", "productivity", "utilities"],
+  "lang": "en"
+}
