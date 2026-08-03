@@ -167,33 +167,6 @@ function scrollToNextDiff() {
 
 // --- New UX Features ---
 
-function loadExample() {
-  leftInput.value = JSON.stringify({
-    "name": "John Doe",
-    "age": 30,
-    "email": "john@example.com",
-    "address": {
-      "city": "New York",
-      "zip": "10001"
-    },
-    "hobbies": ["reading", "coding", "gaming"],
-    "active": true
-  })
-  rightInput.value = JSON.stringify({
-    "name": "John Doe",
-    "age": 31,
-    "email": "john.doe@example.com",
-    "address": {
-      "city": "Boston",
-      "zip": "02101"
-    },
-    "hobbies": ["reading", "coding", "traveling"],
-    "active": true,
-    "phone": "+1-555-0100"
-  })
-  doDiff()
-}
-
 function clearAll() {
   leftInput.value = ''
   rightInput.value = ''
@@ -322,23 +295,14 @@ onUnmounted(() => {
 <template>
   <div class="page">
     <header class="page-header">
-      <h1>JSON Diff - Compare Two JSON Files Online</h1>
-      <p class="subtitle">Compare JSON side by side with visual diff highlighting. Supports escaped strings, comments, auto-repair, and drag & drop.</p>
+      <h1>JSON Diff — Paste Broken JSON, We Fix It, Then Compare</h1>
+      <p class="subtitle">Paste messy JSON and compare it side by side. Auto-repair, dark mode, jump to diffs, 100% local &amp; free — no error screens, ever.</p>
     </header>
 
     <main class="main">
       <section class="panel">
         <!-- Toolbar -->
         <div class="toolbar">
-          <button class="btn-tool" type="button" @click="loadExample" title="Load example data">
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="9" y1="13" x2="15" y2="13"/>
-              <line x1="9" y1="17" x2="15" y2="17"/>
-            </svg>
-            Load Example
-          </button>
           <button class="btn-tool" type="button" @click="clearAll" title="Clear all inputs and results">
             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="3 6 5 6 21 6"/>
@@ -363,11 +327,6 @@ onUnmounted(() => {
             </svg>
             Download
           </button>
-          <span class="shortcut-hint">Ctrl + Enter to compare</span>
-        </div>
-
-        <!-- Options -->
-        <div class="options-bar">
           <label class="option-chip">
             <input type="checkbox" v-model="ignoreKeyOrder" />
             <span>Ignore Key Order</span>
@@ -376,6 +335,7 @@ onUnmounted(() => {
             <input type="checkbox" v-model="ignoreArrayOrder" />
             <span>Ignore Array Order</span>
           </label>
+          <span class="shortcut-hint">Ctrl + Enter to compare</span>
         </div>
 
         <div class="two-cols">
@@ -398,7 +358,10 @@ onUnmounted(() => {
             </div>
             <textarea
               v-model="leftInput"
-              placeholder='Paste JSON or drag & drop a file here'
+              placeholder='{
+  "name": Alice,
+  "age": 30,
+}'
               rows="10"
             />
           </div>
@@ -410,7 +373,7 @@ onUnmounted(() => {
             @dragleave="handleDragLeave('right')"
           >
             <div class="label-row">
-              <label>Right JSON (Modified)</label>
+              <label>Right JSON (Auto Modified)</label>
               <button class="btn-mini" type="button" @click="pasteFromClipboard('right')" title="Paste from clipboard">
                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
@@ -421,7 +384,10 @@ onUnmounted(() => {
             </div>
             <textarea
               v-model="rightInput"
-              placeholder='Paste JSON or drag & drop a file here'
+              placeholder='{
+  "name": Alice,
+  "age": 31,
+}'
               rows="10"
             />
           </div>
@@ -614,7 +580,7 @@ onUnmounted(() => {
   color: var(--text-muted);
   font-size: 0.9375rem;
   line-height: 1.5;
-  margin: 0 0 1.5rem;
+  margin: 0;
 }
 
 .panel {
@@ -666,13 +632,6 @@ onUnmounted(() => {
   font-size: 0.75rem;
   color: var(--text-subtle);
   font-family: var(--font-mono);
-}
-
-.options-bar {
-  display: flex;
-  gap: 0.75rem;
-  margin-bottom: 1.25rem;
-  flex-wrap: wrap;
 }
 
 .option-chip {
