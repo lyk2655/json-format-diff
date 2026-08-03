@@ -1,3 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke="#a78bfa" stroke-width="2">
-  <path d="M4 10h24M4 16h24M4 22h12"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <rect width="32" height="32" rx="7" fill="#6366f1"/>
+  <text x="16" y="22" font-family="monospace" font-size="16" font-weight="bold" fill="white" text-anchor="middle">{ }</text>
+  <circle cx="10" cy="10" r="2.5" fill="#22c55e"/>
+  <circle cx="22" cy="22" r="2.5" fill="#ef4444"/>
 </svg>
