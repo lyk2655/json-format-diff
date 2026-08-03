@@ -1,14 +1,8 @@
 <script setup>
 import { ref, nextTick } from 'vue'
-import { parseJsonSafeExtract, formatJson } from '../utils/jsonParse.js'
+import { parseJsonSafeExtract } from '../utils/jsonParse.js'
 import * as jsondiffpatch from 'jsondiffpatch'
 import { formatSideBySide } from '../utils/sideBySideDiff.js'
-
-const mode = ref('diff')
-const rawInput = ref('')
-const formatResult = ref('')
-const formatError = ref('')
-const formatUsedUnescape = ref(false)
 
 const leftInput = ref('')
 const rightInput = ref('')
@@ -23,33 +17,6 @@ const diffpatcher = jsondiffpatch.create({
   objectHash: (obj) => obj?.id ?? obj?.name ?? JSON.stringify(obj),
   arrays: { detectMove: true },
 })
-
-let formatTimer = null
-function doFormat() {
-  formatError.value = ''
-  formatResult.value = ''
-  formatUsedUnescape.value = false
-  if (formatTimer) clearTimeout(formatTimer)
-  formatTimer = setTimeout(() => {
-    const { ok, value, error } = parseJsonSafeExtract(rawInput.value)
-    if (!ok) {
-      formatError.value = error
-      return
-    }
-    formatResult.value = formatJson(value)
-    formatUsedUnescape.value = rawInput.value.includes('\\"') && !isDirectParse(rawInput.value)
-    formatTimer = null
-  }, 200)
-}
-
-function isDirectParse(str) {
-  try {
-    JSON.parse(str.trim())
-    return true
-  } catch {
-    return false
-  }
-}
 
 function doDiff() {
   diffError.value = ''
@@ -181,53 +148,10 @@ function scrollToNextDiff() {
     <header class="page-header">
       <h1>JSON Diff - Compare Two JSON Files Online</h1>
       <p class="subtitle">Compare JSON side by side with visual diff highlighting. Supports escaped strings, comments, and auto-extraction.</p>
-      <div class="tabs">
-        <button :class="{ active: mode === 'diff' }" @click="mode = 'diff'">JSON Diff</button>
-        <button :class="{ active: mode === 'format' }" @click="mode = 'format'">Format JSON</button>
-      </div>
     </header>
 
     <main class="main">
-      <!-- Format Mode -->
-      <section v-show="mode === 'format'" class="panel">
-        <div class="field">
-          <label>Raw JSON String <span class="label-hint">(supports <code>\"</code>, <code>\n</code>, <code>\uXXXX</code> escapes)</span></label>
-          <textarea
-            v-model="rawInput"
-            placeholder='e.g., {"name":"test","values":[1,2,3]}'
-            rows="8"
-            @input="doFormat"
-          />
-        </div>
-        <div v-if="formatUsedUnescape" class="hint">
-          Auto-detected and processed escape characters
-        </div>
-        <div v-if="formatError" class="error">{{ formatError }}</div>
-        <div v-if="formatResult" class="field result">
-          <div class="result-label-row">
-            <label>Formatted Result</label>
-            <button class="btn-copy-label" type="button" @click="copyToClipboard(formatResult)">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-              </svg>
-              Copy
-            </button>
-          </div>
-          <div class="result-box">
-            <button class="btn-copy-inline" type="button" @click="copyToClipboard(formatResult)">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-              </svg>
-            </button>
-            <pre class="formatted">{{ formatResult }}</pre>
-          </div>
-        </div>
-      </section>
-
-      <!-- Diff Mode -->
-      <section v-show="mode === 'diff'" class="panel">
+      <section class="panel">
         <div class="two-cols">
           <div class="field">
             <label>Left JSON (Original)</label>
@@ -406,36 +330,6 @@ function scrollToNextDiff() {
   font-size: 0.9375rem;
   line-height: 1.5;
   margin: 0 0 1.5rem;
-}
-
-.tabs {
-  display: inline-flex;
-  gap: 0.25rem;
-  padding: 4px;
-  background: var(--surface-hover);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-light);
-}
-
-.tabs button {
-  padding: 0.5rem 1.25rem;
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 0.9rem;
-  transition: all 0.2s ease;
-  border-radius: 6px;
-}
-
-.tabs button:hover {
-  color: var(--text);
-  background: var(--surface);
-}
-
-.tabs button.active {
-  background: var(--surface);
-  color: var(--accent);
-  font-weight: 600;
-  box-shadow: var(--shadow-sm);
 }
 
 .panel {

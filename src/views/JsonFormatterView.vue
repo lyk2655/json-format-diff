@@ -38,7 +38,26 @@ function isDirectParse(str) {
 
 function copyOutput() {
   if (!output.value) return
-  navigator.clipboard?.writeText(output.value)
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(output.value).catch(() => fallbackCopy(output.value))
+    return
+  }
+  fallbackCopy(output.value)
+}
+
+function fallbackCopy(text) {
+  const el = document.createElement('textarea')
+  el.value = text
+  el.style.position = 'fixed'
+  el.style.left = '-9999px'
+  el.style.top = '0'
+  document.body.appendChild(el)
+  el.select()
+  try {
+    document.execCommand('copy')
+  } finally {
+    document.body.removeChild(el)
+  }
 }
 
 function loadExample() {
