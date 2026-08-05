@@ -31,7 +31,6 @@ those mistakes before doing anything — paste messy JSON and it just works.
 - **Dark mode**
 
 ## Stack
-
 Vue 3 + Vite + vue-router + Cloudflare Pages.
 
 ## Local development
