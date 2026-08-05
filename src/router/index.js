@@ -84,6 +84,32 @@ const routes = [
     },
   },
   {
+    path: '/json-to-csv',
+    name: 'json-to-csv',
+    component: () => import('../views/JsonToCsvView.vue'),
+    meta: {
+      title: 'JSON to CSV Converter Online - Convert JSON to CSV Free | Auto-Repair',
+      description: 'Convert JSON to CSV online for free. Auto-repairs broken JSON, handles nested objects and arrays, with one-click copy and download to CSV.',
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@type': 'WebApplication',
+        name: 'JSON to CSV Converter',
+        description: 'Convert JSON to CSV online for free with auto-repair and CSV download.',
+        applicationCategory: 'DeveloperApplication',
+        operatingSystem: 'Any',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        featureList: [
+          'JSON to CSV conversion',
+          'Auto-repair invalid JSON',
+          'Nested object and array support',
+          'Comma, semicolon, and tab delimiters',
+          'Copy and download to CSV',
+          'No data stored - browser-side processing',
+        ],
+      },
+    },
+  },
+  {
     path: '/json-to-yaml',
     name: 'json-to-yaml',
     component: () => import('../views/JsonToYamlView.vue'),

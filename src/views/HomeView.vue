@@ -518,6 +518,7 @@ onUnmounted(() => {
         <li><router-link to="/json-formatter">JSON Formatter</router-link> — Beautify and pretty-print JSON data</li>
         <li><router-link to="/json-validator">JSON Validator</router-link> — Check JSON syntax for errors</li>
         <li><router-link to="/json-minify">JSON Minifier</router-link> — Compress JSON to reduce file size</li>
+        <li><router-link to="/json-to-csv">JSON to CSV Converter</router-link> — Convert JSON to CSV with auto-repair</li>
         <li><router-link to="/json-viewer">JSON Viewer</router-link> — View JSON in an interactive tree structure</li>
         <li><router-link to="/json-to-yaml">JSON to YAML Converter</router-link> — Convert JSON to YAML format</li>
         <li><router-link to="/yaml-to-json">YAML to JSON Converter</router-link> — Convert YAML to JSON format</li>
