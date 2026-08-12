@@ -301,6 +301,57 @@ function applyJsonRepairs(str) {
 }
 
 /**
+ * 从解析器错误中提取行/列定位，并生成「源码行 + 指向列位置的 ^」片段。
+ * 返回 { line, column, position, sourceLine, caret }，无法定位时返回 null。
+ */
+function extractLoc(str, err) {
+  if (!err || !err.message) return null
+  const msg = err.message
+  let line = null
+  let column = null
+  let position = null
+  const lm = msg.match(/line (\d+) column (\d+)/)
+  if (lm) {
+    line = parseInt(lm[1], 10)
+    column = parseInt(lm[2], 10)
+  }
+  const pm = msg.match(/position (\d+)/)
+  if (pm) position = parseInt(pm[1], 10)
+  // 有 position 但没有行/列时，按字符位置反推
+  if (position != null && (line == null || column == null)) {
+    let l = 1
+    let c = 1
+    const max = Math.min(position, str.length)
+    for (let i = 0; i < max; i++) {
+      if (str[i] === '\n') {
+        l++
+        c = 1
+      } else {
+        c++
+      }
+    }
+    line = l
+    column = c
+  }
+  if (line == null || column == null) return null
+  const lines = str.split('\n')
+  const sourceLine = lines[line - 1] != null ? lines[line - 1] : ''
+  // 列是 1-based；tab 视为 1 列宽（best-effort）
+  const caret = (column > 1 ? ' '.repeat(column - 1) : '') + '^'
+  return { line, column, position, sourceLine, caret }
+}
+
+/**
+ * 清理解析器错误信息：去掉尾部冗余的 "at position X (line Y column Z)"，只保留可读的原因。
+ */
+function cleanErrorMessage(msg) {
+  return msg
+    .replace(/\s+at position \d+( \(line \d+ column \d+\))?\s*$/, '')
+    .replace(/^Invalid JSON:\s*/, '')
+    .trim()
+}
+
+/**
  * 尝试解析可能带转义、格式错误的 JSON 字符串。
  * 解析链（逐级尝试）：
  * 1. 去注释 → 直接解析
@@ -318,11 +369,14 @@ export function parseJsonSafe(input) {
     return { ok: false, value: null, error: 'Input is empty' }
   }
 
-  // lastError 记录最近一次 JSON.parse 失败的真实错误，用于精确报错（行/列定位）
+  // lastError / lastParsedString 记录最近一次 JSON.parse 失败的真实错误与对应字符串，
+  // 用于精确报错（行/列定位 + 源码行片段）
   let lastError = null
+  let lastParsedString = raw
 
   // 1. 直接解析
   try {
+    lastParsedString = raw
     const value = JSON.parse(raw)
     return { ok: true, value, error: null, repaired: null }
   } catch (e) {
@@ -332,7 +386,8 @@ export function parseJsonSafe(input) {
   // 2. 缺少外层 {} 的键值对，补上大括号再解析
   if (!raw.startsWith('{') && !raw.startsWith('[') && raw.startsWith('"') && /^"[^"]*":/.test(raw)) {
     try {
-      const value = JSON.parse('{' + raw + '}')
+      lastParsedString = '{' + raw + '}'
+      const value = JSON.parse(lastParsedString)
       return { ok: true, value, error: null, repaired: null }
     } catch (e) {
       lastError = e
@@ -343,6 +398,7 @@ export function parseJsonSafe(input) {
   if (raw.includes('\\"') || raw.includes('\\\\') || /\\[nrtuU]/.test(raw)) {
     try {
       const unescaped = unescapeJsonString(raw)
+      lastParsedString = unescaped
       const value = JSON.parse(unescaped)
       return { ok: true, value, error: null, repaired: null }
     } catch (e) {
@@ -354,6 +410,7 @@ export function parseJsonSafe(input) {
   const { result: repairedStr, repairs } = applyJsonRepairs(raw)
   if (repairs.length > 0) {
     try {
+      lastParsedString = repairedStr
       const value = JSON.parse(repairedStr)
       return { ok: true, value, error: null, repaired: repairs.join('; ') }
     } catch (e) {
@@ -363,6 +420,7 @@ export function parseJsonSafe(input) {
     if (repairedStr.includes('\\"') || repairedStr.includes('\\\\') || /\\[nrtuU]/.test(repairedStr)) {
       try {
         const unescaped = unescapeJsonString(repairedStr)
+        lastParsedString = unescaped
         const value = JSON.parse(unescaped)
         return { ok: true, value, error: null, repaired: repairs.join('; ') }
       } catch (e) {
@@ -371,9 +429,15 @@ export function parseJsonSafe(input) {
     }
   }
 
-  // 全部尝试失败：返回解析器给出的真实错误位置（含 line/column），便于定位
+  // 全部尝试失败：返回解析器给出的真实错误位置（含 line/column）+ 源码行片段，便于定位
   if (lastError && lastError.message) {
-    return { ok: false, value: null, error: 'Invalid JSON: ' + lastError.message }
+    const loc = extractLoc(lastParsedString, lastError)
+    return {
+      ok: false,
+      value: null,
+      error: cleanErrorMessage(lastError.message),
+      loc
+    }
   }
   return { ok: false, value: null, error: 'Invalid JSON. Please check your input for syntax errors.' }
 }

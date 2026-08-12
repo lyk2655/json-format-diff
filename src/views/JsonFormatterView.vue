@@ -5,6 +5,8 @@ import { parseJsonSafeExtract, formatJson } from '../utils/jsonParse.js'
 const input = ref('')
 const output = ref('')
 const error = ref('')
+const errorLoc = ref(null)
+const errorSnippet = ref('')
 const indentSize = ref(2)
 const usedUnescape = ref(false)
 const repairedInfo = ref('')
@@ -14,14 +16,21 @@ let timer = null
 function format() {
   error.value = ''
   output.value = ''
+  errorLoc.value = null
+  errorSnippet.value = ''
   usedUnescape.value = false
   repairedInfo.value = ''
   if (!input.value.trim()) return
   if (timer) clearTimeout(timer)
   timer = setTimeout(() => {
-    const { ok, value, error: err, repaired } = parseJsonSafeExtract(input.value)
+    const { ok, value, error: err, repaired, loc } = parseJsonSafeExtract(input.value)
     if (!ok) {
       error.value = err
+      errorLoc.value = loc || null
+      if (loc) {
+        const prefix = String(loc.line).padEnd(4)
+        errorSnippet.value = prefix + loc.sourceLine + '\n' + ' '.repeat(prefix.length) + loc.caret
+      }
       return
     }
     output.value = formatJson(value, parseInt(indentSize.value))
@@ -98,8 +107,10 @@ function loadExample() {
           <label>Formatted Output <button v-if="output" class="btn-copy-small" @click="copyOutput">Copy</button></label>
           <pre class="output-box" v-if="output">{{ output }}</pre>
           <div v-else-if="error" class="error">
-            {{ error }}
-            <div class="error-tip">Auto-repair was attempted but couldn't fully fix this. Check the position above, fix the syntax, and it will format automatically.</div>
+            <div class="error-title" v-if="errorLoc">⛔ Invalid JSON — line {{ errorLoc.line }}, column {{ errorLoc.column }}</div>
+            <div class="error-msg">{{ error }}</div>
+            <pre v-if="errorSnippet" class="error-code">{{ errorSnippet }}</pre>
+            <div class="error-tip">Auto-repair was attempted but couldn't fully fix this. The marker (^) above shows exactly where parsing stopped — fix the syntax there and it will format automatically.</div>
           </div>
           <div v-else class="placeholder-box">Formatted JSON will appear here</div>
         </div>
@@ -188,6 +199,10 @@ textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3
 .btn-copy-small:hover { color: var(--accent); border-color: var(--accent); }
 .hint { font-size: 0.8125rem; color: var(--accent); margin-top: 0.5rem; }
 .error { padding: 1rem 1.25rem; background: var(--remove-bg); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: var(--radius-sm); color: #dc2626; font-size: 0.9rem; }
+.error-title { font-weight: 700; color: #b91c1c; margin-bottom: 0.35rem; }
+.error-msg { font-size: 0.875rem; line-height: 1.5; color: #dc2626; }
+.error-code { margin: 0.65rem 0 0; padding: 0.75rem 1rem; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 0.8125rem; line-height: 1.6; color: var(--text); white-space: pre; overflow-x: auto; }
+.error-code :deep(.ln) { color: var(--text-subtle); user-select: none; }
 .error-tip { margin-top: 0.5rem; font-size: 0.8125rem; color: var(--text-muted); line-height: 1.5; }
 .seo-content { margin-top: 3rem; padding: 2rem; background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow); border: 1px solid var(--border-light); }
 .seo-content h2 { font-size: 1.375rem; font-weight: 700; color: var(--text); margin: 2rem 0 0.75rem; }
