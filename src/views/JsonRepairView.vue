@@ -65,11 +65,10 @@ function downloadJson() {
 
 function loadExample() {
   input.value = `{
-  "name": 'John Doe',
-  "age": 30,
-  "tags": ["admin", "user",],
-  "email": "john@example.com"
-  "active": true,
+  name: 'John Doe',
+  age: 30,
+  tags: ['admin', 'user',],
+  active: true,
 }`
   repair()
 }
