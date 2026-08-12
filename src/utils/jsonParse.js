@@ -232,6 +232,20 @@ function removeTrailingCommas(str) {
 }
 
 /**
+ * 在相邻属性之间补上缺失的逗号：
+ *   { "a": 1 "b": 2 }   →  { "a": 1, "b": 2 }
+ *   { "a": "x"\n "b": 2 } →  { "a": "x",\n "b": 2 }
+ * 规则：当一个「值结束 token」( } ] true false null 字符串 数字 ) 之后紧跟一个对象 key ("x":) 时，补逗号。
+ * 用 "[^"]*"\s*: 确保后面的 " 是 key（后面跟冒号）而非 value，避免误插。
+ */
+function insertMissingCommas(str) {
+  return str.replace(
+    /(\}|\]|true|false|null|"[^"\\]*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)(\s*)("[^"]*"\s*:)/g,
+    '$1,$2$3'
+  )
+}
+
+/**
  * 综合修复：依次应用所有修复策略，返回修复后的字符串和已应用的修复列表
  */
 function applyJsonRepairs(str) {
@@ -262,6 +276,15 @@ function applyJsonRepairs(str) {
     if (repaired !== result) {
       result = repaired
       repairs.push('Removed trailing commas')
+    }
+  }
+
+  // 3.5 Missing commas between adjacent properties
+  {
+    const repaired = insertMissingCommas(result)
+    if (repaired !== result) {
+      result = repaired
+      repairs.push('Added missing commas')
     }
   }
 
