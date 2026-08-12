@@ -84,6 +84,32 @@ const routes = [
     },
   },
   {
+    path: '/json-repair',
+    name: 'json-repair',
+    component: () => import('../views/JsonRepairView.vue'),
+    meta: {
+      title: 'JSON Repair Tool - Fix Invalid JSON Online Free | Auto-Repair',
+      description: 'Fix invalid JSON online for free. Auto-repairs single quotes, unquoted keys, trailing commas, comments, and stray characters. Get valid, formatted JSON with no upload.',
+      jsonLd: {
+        '@context': 'https://schema.org',
+        '@type': 'WebApplication',
+        name: 'JSON Repair Tool',
+        description: 'Fix invalid JSON online for free with auto-repair and formatting.',
+        applicationCategory: 'DeveloperApplication',
+        operatingSystem: 'Any',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        featureList: [
+          'Auto-repair invalid JSON',
+          'Fix single quotes and unquoted keys',
+          'Remove trailing commas',
+          'Strip JSON comments',
+          'Exact error position on failure',
+          'No data stored - browser-side processing',
+        ],
+      },
+    },
+  },
+  {
     path: '/json-to-csv',
     name: 'json-to-csv',
     component: () => import('../views/JsonToCsvView.vue'),

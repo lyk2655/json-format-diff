@@ -295,18 +295,25 @@ export function parseJsonSafe(input) {
     return { ok: false, value: null, error: 'Input is empty' }
   }
 
+  // lastError 记录最近一次 JSON.parse 失败的真实错误，用于精确报错（行/列定位）
+  let lastError = null
+
   // 1. 直接解析
   try {
     const value = JSON.parse(raw)
     return { ok: true, value, error: null, repaired: null }
-  } catch (_) {}
+  } catch (e) {
+    lastError = e
+  }
 
   // 2. 缺少外层 {} 的键值对，补上大括号再解析
   if (!raw.startsWith('{') && !raw.startsWith('[') && raw.startsWith('"') && /^"[^"]*":/.test(raw)) {
     try {
       const value = JSON.parse('{' + raw + '}')
       return { ok: true, value, error: null, repaired: null }
-    } catch (_) {}
+    } catch (e) {
+      lastError = e
+    }
   }
 
   // 3. 可能是双重编码：字符串里写的是 \" 而不是 "
@@ -315,7 +322,9 @@ export function parseJsonSafe(input) {
       const unescaped = unescapeJsonString(raw)
       const value = JSON.parse(unescaped)
       return { ok: true, value, error: null, repaired: null }
-    } catch (_) {}
+    } catch (e) {
+      lastError = e
+    }
   }
 
   // 4. 综合修复后解析
@@ -324,17 +333,25 @@ export function parseJsonSafe(input) {
     try {
       const value = JSON.parse(repairedStr)
       return { ok: true, value, error: null, repaired: repairs.join('; ') }
-    } catch (_) {}
+    } catch (e) {
+      lastError = e
+    }
     // 修复后再尝试 unescape + 解析
     if (repairedStr.includes('\\"') || repairedStr.includes('\\\\') || /\\[nrtuU]/.test(repairedStr)) {
       try {
         const unescaped = unescapeJsonString(repairedStr)
         const value = JSON.parse(unescaped)
         return { ok: true, value, error: null, repaired: repairs.join('; ') }
-      } catch (_) {}
+      } catch (e) {
+        lastError = e
+      }
     }
   }
 
+  // 全部尝试失败：返回解析器给出的真实错误位置（含 line/column），便于定位
+  if (lastError && lastError.message) {
+    return { ok: false, value: null, error: 'Invalid JSON: ' + lastError.message }
+  }
   return { ok: false, value: null, error: 'Invalid JSON. Please check your input for syntax errors.' }
 }
 

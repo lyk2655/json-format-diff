@@ -10,6 +10,7 @@ const navLinks = [
   { to: '/json-formatter', label: 'Formatter' },
   { to: '/json-validator', label: 'Validator' },
   { to: '/json-minify', label: 'Minify' },
+  { to: '/json-repair', label: 'Repair' },
   { to: '/json-to-csv', label: 'JSON→CSV' },
   { to: '/json-viewer', label: 'Viewer' },
   { to: '/json-to-yaml', label: 'JSON→YAML' },
