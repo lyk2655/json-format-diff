@@ -163,19 +163,19 @@ function repairUnquotedKeys(str) {
     if (!inString && (str[i] === '{' || str[i] === ',')) {
       out += str[i]
       i++
-      // skip whitespace
+      // skip whitespace (preserve indentation)
       while (i < str.length && /\s/.test(str[i])) {
         out += str[i]
         i++
       }
-      // check if unquoted key (starts with letter, _, $ and is NOT already quoted)
+      // check if an unquoted key follows (identifier then ':')
       if (i < str.length && /[a-zA-Z_$]/.test(str[i])) {
         let key = ''
         while (i < str.length && /[a-zA-Z0-9_$\-]/.test(str[i])) {
           key += str[i]
           i++
         }
-        // skip whitespace before colon
+        // skip whitespace between key and colon
         while (i < str.length && /\s/.test(str[i])) {
           i++
         }
@@ -184,10 +184,14 @@ function repairUnquotedKeys(str) {
           i++
           continue
         }
-        // not a key, output as-is
+        // not actually a key; emit as-is
         out += key
         continue
       }
+      // comma/brace not followed by a key: hand the rest back to the
+      // main loop so quotes/strings are tracked correctly (fixes the
+      // "key after a string array" regression)
+      continue
     }
     out += str[i]
     i++
