@@ -243,8 +243,10 @@ function removeTrailingCommas(str) {
  * 用 "[^"]*"\s*: 确保后面的 " 是 key（后面跟冒号）而非 value，避免误插。
  */
 function insertMissingCommas(str) {
+  // 在「值结束 token」与紧随其后的 key 之间补逗号。
+  // key 可能是带引号的 "x":，也可能是未加引号的标识符 x:（与 repairUnquotedKeys 互补：先补逗号，再补引号）
   return str.replace(
-    /(\}|\]|true|false|null|"[^"\\]*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)(\s*)("[^"]*"\s*:)/g,
+    /(\}|\]|true|false|null|"[^"\\]*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)(\s*)(("[^"]*"\s*:)|([a-zA-Z_$][a-zA-Z0-9_$]*\s*:))/g,
     '$1,$2$3'
   )
 }
@@ -265,25 +267,7 @@ function applyJsonRepairs(str) {
     }
   }
 
-  // 2. Unquoted keys
-  {
-    const repaired = repairUnquotedKeys(result)
-    if (repaired !== result) {
-      result = repaired
-      repairs.push('Added missing quotes around keys')
-    }
-  }
-
-  // 3. Trailing commas
-  {
-    const repaired = removeTrailingCommas(result)
-    if (repaired !== result) {
-      result = repaired
-      repairs.push('Removed trailing commas')
-    }
-  }
-
-  // 3.5 Missing commas between adjacent properties
+  // 2. Missing commas between adjacent properties（先补逗号，让后续 unquoted-keys 能识别到 key）
   {
     const repaired = insertMissingCommas(result)
     if (repaired !== result) {
@@ -292,7 +276,25 @@ function applyJsonRepairs(str) {
     }
   }
 
-  // 4. Trailing extra characters
+  // 3. Unquoted keys
+  {
+    const repaired = repairUnquotedKeys(result)
+    if (repaired !== result) {
+      result = repaired
+      repairs.push('Added missing quotes around keys')
+    }
+  }
+
+  // 4. Trailing commas
+  {
+    const repaired = removeTrailingCommas(result)
+    if (repaired !== result) {
+      result = repaired
+      repairs.push('Removed trailing commas')
+    }
+  }
+
+  // 5. Trailing extra characters
   {
     const trimmed = trimTrailingExtra(result)
     if (trimmed && trimmed !== result) {
@@ -382,7 +384,7 @@ export function parseJsonSafe(input) {
   try {
     lastParsedString = raw
     const value = JSON.parse(raw)
-    return { ok: true, value, error: null, repaired: null }
+    return { ok: true, value, error: null, repaired: null, repairedText: null }
   } catch (e) {
     lastError = e
   }
@@ -392,7 +394,7 @@ export function parseJsonSafe(input) {
     try {
       lastParsedString = '{' + raw + '}'
       const value = JSON.parse(lastParsedString)
-      return { ok: true, value, error: null, repaired: null }
+      return { ok: true, value, error: null, repaired: null, repairedText: null }
     } catch (e) {
       lastError = e
     }
@@ -404,7 +406,7 @@ export function parseJsonSafe(input) {
       const unescaped = unescapeJsonString(raw)
       lastParsedString = unescaped
       const value = JSON.parse(unescaped)
-      return { ok: true, value, error: null, repaired: null }
+      return { ok: true, value, error: null, repaired: null, repairedText: null }
     } catch (e) {
       lastError = e
     }
@@ -416,7 +418,8 @@ export function parseJsonSafe(input) {
     try {
       lastParsedString = repairedStr
       const value = JSON.parse(repairedStr)
-      return { ok: true, value, error: null, repaired: repairs.join('; ') }
+      // repairedText 保留原始排版（仅就地修正引号/逗号），用于 diff 高亮时与用户输入逐行对齐
+      return { ok: true, value, error: null, repaired: repairs.join('; '), repairedText: repairedStr }
     } catch (e) {
       lastError = e
     }
@@ -426,7 +429,7 @@ export function parseJsonSafe(input) {
         const unescaped = unescapeJsonString(repairedStr)
         lastParsedString = unescaped
         const value = JSON.parse(unescaped)
-        return { ok: true, value, error: null, repaired: repairs.join('; ') }
+        return { ok: true, value, error: null, repaired: repairs.join('; '), repairedText: repairedStr }
       } catch (e) {
         lastError = e
       }
@@ -529,12 +532,18 @@ export function parseJsonSafeExtract(input) {
     const trimmed = v.trim()
     if ((trimmed.startsWith('{') && trimmed.includes('}')) || (trimmed.startsWith('[') && trimmed.includes(']'))) {
       const inner = parseJsonSafe(v)
-      if (inner.ok && inner.value != null) {
+        if (inner.ok && inner.value != null) {
         // Merge repair info from both levels
         const repairedParts = []
         if (result.repaired) repairedParts.push(result.repaired)
         if (inner.repaired) repairedParts.push(inner.repaired)
-        return { ok: true, value: inner.value, error: null, repaired: repairedParts.length > 0 ? repairedParts.join('; ') : null }
+        return {
+          ok: true,
+          value: inner.value,
+          error: null,
+          repaired: repairedParts.length > 0 ? repairedParts.join('; ') : null,
+          repairedText: inner.repairedText || result.repairedText || null
+        }
       }
     }
   }
@@ -585,3 +594,75 @@ export function formatJson(obj, indent = 2) {
     return String(obj)
   }
 }
+
+/**
+ * 字符级差异（用于「JSON Repair」的高亮展示）：
+ * 把原始输入和修复后结果做对齐，标出每一处「新增 / 删除」的字符。
+ * 空白（缩进、空格）在比较时视为相等，因此缩进差异不会被误标为改动——
+ * 只有真正变化的字符（如补的双引号、删的尾随逗号、单引号→双引号）才着色。
+ *
+ * 使用 Hirschberg 分治算法，空间 O(min(n,m))，可处理较大的 JSON。
+ * 返回 null 表示输入过大已降级（调用方应直接展示纯结果）。
+ *
+ * 返回片段数组：{ type: 'common' | 'ins' | 'del', text }
+ *   ins = 修复结果里新增的字符（绿色）
+ *   del = 原始里有、修复后没的字符（红色删除线）
+ */
+export function diffTokens(aStr, bStr) {
+  if (!aStr || !bStr) return null
+  const A = tokenizeForDiff(aStr)
+  const B = tokenizeForDiff(bStr)
+  const n = A.length
+  const m = B.length
+  // 保护：token 数乘积过大时降级（直接展示纯结果），避免大矩阵占用内存
+  if (n * m > 4_000_000) return null
+  // 标准 LCS 动态规划 + 回溯，保证对齐正确（不依赖分治近似）
+  const dp = Array.from({ length: n + 1 }, () => new Int32Array(m + 1))
+  for (let i = 1; i <= n; i++) {
+    for (let j = 1; j <= m; j++) {
+      dp[i][j] = eqTok(A[i - 1], B[j - 1]) ? dp[i - 1][j - 1] + 1 : Math.max(dp[i - 1][j], dp[i][j - 1])
+    }
+  }
+  const r = []
+  let i = n
+  let j = m
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && eqTok(A[i - 1], B[j - 1])) {
+      r.push({ type: 'common', text: A[i - 1].v })
+      i--
+      j--
+    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+      r.push({ type: 'ins', text: B[j - 1].v })
+      j--
+    } else {
+      r.push({ type: 'del', text: A[i - 1].v })
+      i--
+    }
+  }
+  return r.reverse()
+}
+
+function tokenizeForDiff(str) {
+  const tokens = []
+  let i = 0
+  while (i < str.length) {
+    const ch = str[i]
+    if (/\s/.test(ch)) {
+      let j = i
+      while (j < str.length && /\s/.test(str[j])) j++
+      tokens.push({ t: 'w', v: str.slice(i, j) })
+      i = j
+    } else {
+      tokens.push({ t: 'c', v: ch })
+      i++
+    }
+  }
+  return tokens
+}
+
+function eqTok(x, y) {
+  // 空白 token 只有两边都是空白时才视为相等（避免空白与字符乱配对导致对齐崩坏）
+  if (x.t === 'w' && y.t === 'w') return true
+  return x.t === 'c' && y.t === 'c' && x.v === y.v
+}
+

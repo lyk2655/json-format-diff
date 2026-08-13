@@ -1,26 +1,61 @@
 <script setup>
-import { ref } from 'vue'
-import { parseJsonSafeExtract, formatJson } from '../utils/jsonParse.js'
+import { ref, computed } from 'vue'
+import { parseJsonSafeExtract, formatJson, diffTokens } from '../utils/jsonParse.js'
 
 const input = ref('')
 const output = ref('')
+const repairedText = ref('')
 const error = ref('')
 const errorLoc = ref(null)
 const errorSnippet = ref('')
 const repairedInfo = ref('')
+const showDiff = ref(true)
 
 let timer = null
+
+// 差异高亮片段：对比「保留原始排版的修复结果」与用户输入，逐行对齐，只标真正改动的字符
+const diffResult = computed(() =>
+  output.value && repairedText.value ? diffTokens(input.value, repairedText.value) : null
+)
+// 人性化的修复说明列表
+const repairList = computed(() => humanizeRepairs(repairedInfo.value))
+
+function segClass(seg) {
+  if (seg.type === 'common') return 'diff-common'
+  if (/^\s*$/.test(seg.text)) return 'diff-common' // 缩进/空白不标色
+  return seg.type === 'ins' ? 'diff-ins' : 'diff-del'
+}
+function toggleView() {
+  showDiff.value = !showDiff.value
+}
+
+const REPAIR_LABELS = {
+  'Converted single quotes to double quotes': '把单引号改成了双引号',
+  'Added missing quotes around keys': '给没有引号的键名补上了双引号',
+  'Removed trailing commas': '移除了结尾多余的逗号',
+  'Added missing commas': '补上了缺失的逗号',
+  'Removed extra trailing characters': '截掉了结尾多余的内容',
+}
+function humanizeRepairs(text) {
+  if (!text) return []
+  return String(text)
+    .split(';')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((s) => REPAIR_LABELS[s] || s)
+}
 
 function repair() {
   error.value = ''
   output.value = ''
+  repairedText.value = ''
   errorLoc.value = null
   errorSnippet.value = ''
   repairedInfo.value = ''
   if (!input.value.trim()) return
   if (timer) clearTimeout(timer)
   timer = setTimeout(() => {
-    const { ok, value, error: err, repaired, loc } = parseJsonSafeExtract(input.value)
+    const { ok, value, error: err, repaired, repairedText: rt, loc } = parseJsonSafeExtract(input.value)
     if (!ok) {
       error.value = err
       errorLoc.value = loc || null
@@ -31,6 +66,7 @@ function repair() {
       return
     }
     output.value = formatJson(value, 2)
+    repairedText.value = rt || ''
     repairedInfo.value = repaired || ''
   }, 200)
 }
@@ -114,8 +150,16 @@ function loadExample() {
           ></textarea>
         </div>
         <div class="field">
-          <label>Repaired JSON <button v-if="output" class="btn-copy-small" @click="copyOutput">Copy</button></label>
-          <pre class="output-box" v-if="output">{{ output }}</pre>
+          <label>Repaired JSON
+            <button v-if="output" class="btn-copy-small" @click="copyOutput">Copy</button>
+            <button v-if="output && diffResult" class="btn-copy-small" @click="toggleView">{{ showDiff ? '格式化结果' : '修复对比' }}</button>
+          </label>
+          <div v-if="output && showDiff && diffResult" class="diff-legend">
+            <span><i class="swatch sw-ins"></i> 新增的字符（如补上的 <code>"</code>、<code>,</code>）</span>
+            <span><i class="swatch sw-del"></i> 删除的字符（如去掉的 <code>'</code>、尾随 <code>,</code>）</span>
+          </div>
+          <pre class="output-box" v-if="output && showDiff && diffResult"><span v-for="(seg, i) in diffResult" :key="i" :class="segClass(seg)">{{ seg.text }}</span></pre>
+          <pre class="output-box" v-else-if="output">{{ output }}</pre>
           <div v-else-if="error" class="error">
             <div class="error-title" v-if="errorLoc">⛔ Invalid JSON — line {{ errorLoc.line }}, column {{ errorLoc.column }}</div>
             <div class="error-msg">{{ error }}</div>
@@ -125,7 +169,12 @@ function loadExample() {
           <div v-else class="placeholder-box">Repaired JSON will appear here</div>
         </div>
       </div>
-      <div v-if="repairedInfo" class="hint">Auto-repaired: {{ repairedInfo }}</div>
+      <div v-if="repairList.length" class="repair-summary">
+        <div class="repair-summary-title">✅ Auto-repaired — 我们自动做了以下调整：</div>
+        <ul class="repair-list">
+          <li v-for="(item, i) in repairList" :key="i">{{ item }}</li>
+        </ul>
+      </div>
     </div>
 
     <section class="seo-content">
@@ -199,7 +248,18 @@ textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3
 .placeholder-box { padding: 3rem 1.25rem; background: var(--surface-hover); border: 1px dashed var(--border); border-radius: var(--radius-sm); color: var(--text-subtle); font-size: 0.875rem; text-align: center; }
 .btn-copy-small { padding: 0.15rem 0.5rem; font-size: 0.75rem; color: var(--text-muted); background: transparent; border: 1px solid var(--border); border-radius: 4px; }
 .btn-copy-small:hover { color: var(--accent); border-color: var(--accent); }
-.hint { font-size: 0.8125rem; color: var(--accent); margin-top: 0.75rem; }
+.repair-summary { margin-top: 0.9rem; padding: 0.75rem 1rem; background: var(--accent-light); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius-sm); }
+.repair-summary-title { font-size: 0.8125rem; font-weight: 600; color: var(--accent); margin-bottom: 0.4rem; }
+.repair-list { margin: 0; padding-left: 1.15rem; font-size: 0.8125rem; color: var(--text-muted); line-height: 1.7; }
+.repair-list li { margin-bottom: 0.15rem; }
+.diff-ins { color: #16a34a; background: rgba(22, 163, 74, 0.14); border-radius: 2px; }
+.diff-del { color: #dc2626; background: rgba(220, 38, 38, 0.1); text-decoration: line-through; border-radius: 2px; }
+.diff-common { color: inherit; }
+.diff-legend { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 0.5rem; font-size: 0.75rem; color: var(--text-muted); }
+.diff-legend .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: middle; margin-right: 0.3rem; }
+.diff-legend .swatch.sw-ins { background: rgba(22, 163, 74, 0.32); }
+.diff-legend .swatch.sw-del { background: rgba(220, 38, 38, 0.28); }
+.diff-legend code { font-family: var(--font-mono); background: var(--surface-hover); padding: 0 0.25rem; border-radius: 3px; }
 .error { padding: 1rem 1.25rem; background: var(--remove-bg); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: var(--radius-sm); color: #dc2626; font-size: 0.9rem; }
 .error-title { font-weight: 700; color: #b91c1c; margin-bottom: 0.35rem; }
 .error-msg { font-size: 0.875rem; line-height: 1.5; color: #dc2626; }
