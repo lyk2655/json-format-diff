@@ -916,14 +916,6 @@ textarea::placeholder {
   border-right: 1px solid var(--border);
 }
 
-.diff-cell.diff-row-changed.diff-left {
-  background: var(--remove-bg);
-}
-
-.diff-cell.diff-row-changed.diff-right {
-  background: var(--add-bg);
-}
-
 .diff-line {
   margin: 0;
   padding: 0.2rem 0;
@@ -937,9 +929,7 @@ textarea::placeholder {
 .diff-line :deep(.diff-removed) {
   background: var(--diff-removed-bg);
   color: var(--diff-removed-text);
-  padding: 2px 4px;
-  border-radius: 4px;
-  border: 1px solid var(--diff-removed-border);
+  border-radius: 2px;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
@@ -947,9 +937,7 @@ textarea::placeholder {
 .diff-line :deep(.diff-added) {
   background: var(--diff-added-bg);
   color: var(--diff-added-text);
-  padding: 2px 4px;
-  border-radius: 4px;
-  border: 1px solid var(--diff-added-border);
+  border-radius: 2px;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
